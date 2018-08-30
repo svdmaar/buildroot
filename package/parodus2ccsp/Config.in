@@ -1,0 +1,7 @@
+config BR2_PACKAGE_PARODUS2CCSP
+    bool "parodus2ccsp"
+    default n
+    select BR2_PACKAGE_LIBPARODUS
+    select BR2_PACKAGE_CCSPCOMMONLIBRARY
+    help
+       parodus to ccsp library

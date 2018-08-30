@@ -4,8 +4,19 @@
 #
 ################################################################################
 
-DBUS_VERSION = 1.10.16
 DBUS_SITE = http://dbus.freedesktop.org/releases/dbus
+
+ifeq ($(BR2_PACKAGE_PARODUS2CCSP),y)
+
+DBUS_VERSION = 1.6.18
+DBUS_AUTORECONF = YES
+export ACLOCAL = aclocal-1.15
+export AUTOMAKE = automake-1.15
+else
+
+DBUS_VERSION = 1.10.16
+endif
+
 DBUS_LICENSE = AFLv2.1 or GPLv2+ (library, tools), GPLv2+ (tools)
 DBUS_LICENSE_FILES = COPYING
 DBUS_INSTALL_STAGING = YES

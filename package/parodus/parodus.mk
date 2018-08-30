@@ -9,11 +9,15 @@ PARODUS_SITE_METHOD = git
 PARODUS_SITE = git://github.com/Comcast/parodus.git
 PARODUS_INSTALL_STAGING = YES
 
-PARODUS_DEPENDENCIES = nopoll cimplog nanomsg msgpack-c cjson trower-base64 wrp-c wdmp-c cjson
+PARODUS_DEPENDENCIES = nopoll cimplog nanomsg msgpack-c cjson trower-base64 wrp-c wdmp-c cjson cjwt
 
 PARODUS_CONF_OPTS = \
         -DCMAKE_C_FLAGS="$(TARGET_CFLAGS) $(PARODUS_INCLUDE_DIRS)" \
         -DBUILD_BR=ON
+
+ifeq ($(BR2_PACKAGE_PARODUS_SERVICE_APP), y)
+PARODUS_CONF_OPTS += -DPARODUS_SERVICE_APP=true
+endif
 
 PARODUS_INCLUDE_DIRS = \
     -I$(STAGING_DIR)/usr/include \

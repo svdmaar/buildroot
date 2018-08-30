@@ -5,11 +5,13 @@
 ################################################################################
 
 ifeq ($(BR2_PACKAGE_CJSON_VERSION_1.7),y)
-CJSON_VERSION = v1.7.1
+CJSON_VERSION = 3c8935676a97c7c97bf006db8312875b4f292f6c
+CJSON_SITE =  git://github.com/DaveGamble/cJSON.git
 else
 CJSON_VERSION = v1.4.0
+CJSON_SITE = $(call github,DaveGamble,cJSON,$(CJSON_VERSION))
 endif
-CJSON_SITE = $(call github,DaveGamble,cjson,$(CJSON_VERSION))
+
 CJSON_INSTALL_STAGING = YES
 CJSON_LICENSE = MIT
 CJSON_LICENSE_FILES = LICENSE
