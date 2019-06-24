@@ -11,6 +11,7 @@ config BR2_PACKAGE_PARODUS
     select BR2_PACKAGE_WDMP_C
     select BR2_PACKAGE_CJSON
     select BR2_PACKAGE_CJWT
+    select BR2_PACKAGE_LIBCURL
     help
        parodus client library
 

@@ -4,12 +4,12 @@
 #
 ################################################################################
 
-PARODUS_VERSION = 326e83c177315672ffd50149a6e41ac63e11d23d
+PARODUS_VERSION = 95b6f75284afad688ba87cf9b29eadc12d7e3268
 PARODUS_SITE_METHOD = git
 PARODUS_SITE = git://github.com/Comcast/parodus.git
 PARODUS_INSTALL_STAGING = YES
 
-PARODUS_DEPENDENCIES = nopoll cimplog nanomsg msgpack-c cjson trower-base64 wrp-c wdmp-c cjson cjwt
+PARODUS_DEPENDENCIES = nopoll cimplog nanomsg msgpack-c cjson trower-base64 wrp-c wdmp-c cjson cjwt libcurl
 
 PARODUS_CONF_OPTS = \
         -DCMAKE_C_FLAGS="$(TARGET_CFLAGS) $(PARODUS_INCLUDE_DIRS)" \
