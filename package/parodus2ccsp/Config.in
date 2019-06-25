@@ -5,3 +5,12 @@ config BR2_PACKAGE_PARODUS2CCSP
     select BR2_PACKAGE_CCSPCOMMONLIBRARY
     help
        parodus to ccsp library
+
+if BR2_PACKAGE_PARODUS2CCP
+config BR2_PACKAGE_PARODUS2CCP_APP
+    bool "Create Parodus to CCSP App"
+    default n
+    help
+       This option allows to create parodus2ccsp app,
+       default is parodus2ccp library
+endif
