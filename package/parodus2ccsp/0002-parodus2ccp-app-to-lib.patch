@@ -43,7 +43,7 @@ index 1e8074f..cf82777 100644
  int main()
  {
 +#else
-+int Parodus2CCSPMain( int argc, char **argv)
++int Parodus2CCSPMain()
 +{
 +#endif
          int ret = -1;
