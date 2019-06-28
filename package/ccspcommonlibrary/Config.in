@@ -1,5 +1,5 @@
 config BR2_PACKAGE_CCSPCOMMONLIBRARY
-    bool "parodus"
+    bool "CCSP Common Library"
     default n
     select BR2_PACKAGE_DBUS
     help
