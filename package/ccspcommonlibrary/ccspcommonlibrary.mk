@@ -53,5 +53,6 @@ endef
 
 define CCSPCOMMONLIBRARY_INSTALL_TARGET_CMDS
     $(INSTALL) -m 755 $(@D)/.libs/libccsp_common.so* $(TARGET_DIR)/usr/lib
+    cp $(@D)/config/ccsp_msg.cfg ${TARGET_DIR}/tmp
 endef
 $(eval $(autotools-package))
