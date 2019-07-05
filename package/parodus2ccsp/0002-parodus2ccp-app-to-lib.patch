@@ -7,14 +7,14 @@ index bc49341..a74b9f3 100644
  endif()
  set(HEADERS app/libpd.h)
 +
-+if (PARODUS2CCP_APP)
++if (PARODUS2CCSP_APP)
 +
  add_executable(webpa ${SOURCES} ${HEADERS})
-+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DPARODUS2CCP_APP ")
++set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DPARODUS2CCSP_APP ")
 +else ()
 +
 +add_library(webpa SHARED ${SOURCES} ${HEADERS})
-+endif (PARODUS2CCP_APP)
++endif (PARODUS2CCSP_APP)
 +
  set(COMMON_LIBS -ldbus-1 -lccsp_common -lwrp-c -lpthread -lwdmp-c -lmsgpackc -ltrower-base64 -lm -lnanomsg -lcjson -lrt -luuid -llibparodus -lcimplog)
  if (BUILD_YOCTO)
@@ -25,7 +25,7 @@ index bc49341..a74b9f3 100644
  target_link_libraries (webpa ${CMAKE_THREAD_LIBS_INIT} ${COMMON_LIBS})
 -install (TARGETS webpa DESTINATION bin)
 +
-+if (PARODUS2CCP_APP)
++if (PARODUS2CCSP_APP)
 +set (INSTALL_DIR bin)
 +else ()
 +set (INSTALL_DIR lib)
@@ -39,7 +39,7 @@ index 1e8074f..cf82777 100644
  /*                             External Functions                             */
  /*----------------------------------------------------------------------------*/
  
-+#if (PARODUS2CCP_APP)
++#if (PARODUS2CCSP_APP)
  int main()
  {
 +#else

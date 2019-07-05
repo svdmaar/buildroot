@@ -28,7 +28,7 @@ CCSPCOMMONLIBRARY_CONF_ENV += CPPFLAGS="$(TARGET_CXXFLAGS) -I${STAGING_DIR}/usr/
 
 
 define CCSPCOMMONLIBRARY_INSTALL_STAGING_CMDS
-    $(INSTALL) -m 755 $(@D)/.libs/libccsp_common.so* $(STAGING_DIR)/usr/lib
+    cp -ar $(@D)/.libs/libccsp_common.so* $(STAGING_DIR)/usr/lib
     mkdir -p ${STAGING_DIR}/usr/include/ccsp
     cp -ar $(@D)/source/debug_api/include/* ${STAGING_DIR}/usr/include/ccsp
     cp -ar $(@D)/source/util_api/ansc/include/* ${STAGING_DIR}/usr/include/ccsp
@@ -52,7 +52,7 @@ define CCSPCOMMONLIBRARY_INSTALL_STAGING_CMDS
 endef
 
 define CCSPCOMMONLIBRARY_INSTALL_TARGET_CMDS
-    $(INSTALL) -m 755 $(@D)/.libs/libccsp_common.so* $(TARGET_DIR)/usr/lib
+    cp -ar $(@D)/.libs/libccsp_common.so* $(TARGET_DIR)/usr/lib
     mkdir -p ${TARGET_DIR}/usr/share/ccspcommonlibrary
     cp $(@D)/config/ccsp_msg.cfg ${TARGET_DIR}/usr/share/ccspcommonlibrary
 endef

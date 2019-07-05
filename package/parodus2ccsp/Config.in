@@ -6,8 +6,8 @@ config BR2_PACKAGE_PARODUS2CCSP
     help
        parodus to ccsp library
 
-if BR2_PACKAGE_PARODUS2CCP
-config BR2_PACKAGE_PARODUS2CCP_APP
+if BR2_PACKAGE_PARODUS2CCSP
+config BR2_PACKAGE_PARODUS2CCSP_APP
     bool "Create Parodus to CCSP App"
     default n
     help
