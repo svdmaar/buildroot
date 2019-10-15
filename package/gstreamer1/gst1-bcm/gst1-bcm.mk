@@ -4,6 +4,12 @@
 #
 ################################################################################
 
+ifneq ($(filter y,$(BR2_PACKAGE_GST1_BCM_UNIFIED_VERSION)),)
+GST1_BCM_SITE = git@github.com:Metrological/bcm-gstreamer.git
+GST1_BCM_VERSION = 4bd348f3a01fbba830e80ae3b30ac4eccdef1da2
+else
+GST1_BCM_SITE = git@github.com:Metrological/gstreamer-plugins-soc.git
+
 ifeq ($(BR2_PACKAGE_UMA_SDK),y)
 GST1_BCM_VERSION = 17.1-7
 else ifeq ($(BR2_PACKAGE_BCM_REFSW_16_1),y)
@@ -27,7 +33,7 @@ GST1_BCM_VERSION = 17.1-5
 else ifneq ($(filter y,$(BR2_PACKAGE_HOMECAST_SDK)),)
 GST1_BCM_VERSION = 961a36dcd30c91330b8a9503e12ec3ddb30b70b6
 else ifneq ($(filter y,$(BR2_PACKAGE_VSS_SDK)),)
-GST1_BCM_VERSION = 372e39b8c2f04e57eb4e7fb897e7b0b407fea649
+GST1_BCM_VERSION = f04be4486828700bb921ec557f8d109a44fe02da
 else ifneq ($(filter y,$(BR2_PACKAGE_EVASION_SDK)),)
 GST1_BCM_VERSION = 18.2-rdkv-20180727
 else ifneq ($(filter y,$(BR2_PACKAGE_VFTV_SDK)),)
@@ -36,7 +42,8 @@ else
 GST1_BCM_VERSION = 15.2
 endif
 
-GST1_BCM_SITE = git@github.com:Metrological/gstreamer-plugins-soc.git
+endif
+
 GST1_BCM_SITE_METHOD = git
 GST1_BCM_LICENSE = PROPRIETARY
 GST1_BCM_INSTALL_STAGING = YES
@@ -174,10 +181,9 @@ GST1_BCM_CONF_OPTS += \
 	--includedir=/usr/include/gstreamer-wpe \
 	--program-prefix wpe
 define GST1_BCM_APPLY_VSS_FIX
- package/vss-sdk/gst1/brcm.no_opus.fix.sh ${@D}
  package/vss-sdk/gst1/brcm.fix.sh ${@D}
 endef
-GST1_BCM_POST_PATCH_HOOKS += GST1_BCM_APPLY_VSS_FIX
+GST1_BCM_PRE_CONFIGURE_HOOKS += GST1_BCM_APPLY_VSS_FIX
 endif
 
 $(eval $(autotools-package))

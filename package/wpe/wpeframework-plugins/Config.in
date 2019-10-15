@@ -96,7 +96,7 @@ if BR2_PACKAGE_HAS_NEXUS && !BR2_PACKAGE_WPEFRAMEWORK_COMPOSITOR_NEXUS_SERVER_EX
 
 config BR2_PACKAGE_WPEFRAMEWORK_COMPOSITOR_IRMODE
     string "IR mode"
-    default "16"
+    default "NEXUS_IrInputMode_eCirNec"
     help
       Sets the IR Mode to be used with IR Nexus. Every remote has a different mode and key mapping.
 
@@ -342,6 +342,7 @@ config BR2_PACKAGE_WPEFRAMEWORK_NETWORKCONTROL
 
 config BR2_PACKAGE_WPEFRAMEWORK_PACKAGER
     select BR2_PACKAGE_WPEFRAMEWORK_PLUGINS
+    select BR2_PACKAGE_OPKG
     default n
     bool "Packager"
     help
@@ -602,6 +603,12 @@ config BR2_PACKAGE_WPEFRAMEWORK_SYSTEMCOMMANDS
     bool "SystemCommands"
     help
       SystemCommands Plugin
+      
+config BR2_PACKAGE_WPEFRAMEWORK_FILETRANSFER
+    select BR2_PACKAGE_WPEFRAMEWORK_PLUGINS
+    bool "FileTransfer"
+    help
+      FileTransfer Plugin
 
 menuconfig BR2_PACKAGE_WPEFRAMEWORK_SPARK
     bool "Spark"
