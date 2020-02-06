@@ -27,6 +27,7 @@ case "$1" in
 		cp -rfap /etc/* $DESTINATION/etc
 		cp -rfap /usr/lib/* $DESTINATION/lib
 		cp -rfap /usr/bin/* $DESTINATION/bin
+		cp -rfap $SOURCE/usr/bin $DESTINATION
 
 		ln -s $SOURCE/usr/share/mime $DESTINATION/share/mime
 		ln -s $SOURCE/usr/share/X11 $DESTINATION/share/X11
