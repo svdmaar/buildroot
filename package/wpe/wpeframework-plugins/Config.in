@@ -237,11 +237,10 @@ config BR2_PACKAGE_WPEFRAMEWORK_DEVICEINFO
 
 config BR2_PACKAGE_WPEFRAMEWORK_DEVICEIDENTIFICATION
     select BR2_PACKAGE_WPEFRAMEWORK_PLUGINS
-    depends on BR2_PACKAGE_HAS_NEXUS
     bool "DeviceIdentification"
     default y
     help
-      DeviceIdentification Plugin (Nexus OTP)
+      DeviceIdentification Plugin
 
 config BR2_PACKAGE_WPEFRAMEWORK_DISPLAYINFO
     select BR2_PACKAGE_WPEFRAMEWORK_PLUGINS
