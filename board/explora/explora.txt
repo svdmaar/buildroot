@@ -155,5 +155,4 @@ libWPEFrameworkCobalt.so
 libWPEFrameworkDefinitions.so
 libv3ddriver.so
 content
-libwidevine_ce_cdm_shared.so
 keybox.bin
