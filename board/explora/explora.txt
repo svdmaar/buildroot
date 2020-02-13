@@ -77,7 +77,6 @@ liborc-0.4.so
 liborc-test-0.4.so
 libpcre.so
 libpixman-1.so
-libplayready.so
 libocdm.so
 libpng16.so
 libprovision.so
@@ -156,3 +155,4 @@ libWPEFrameworkDefinitions.so
 libv3ddriver.so
 content
 keybox.bin
+playready
