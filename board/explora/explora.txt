@@ -113,6 +113,8 @@ libWPEFrameworkNetworkControl.so
 libWPEFrameworkRemoteControl.so
 libWPEFrameworkSnapshot.so
 libWPEFrameworkWebKitBrowser.so
+libWPEFrameworkProvisioning.so
+libWPEFrameworkNetflix.so
 libWPEFrameworkMonitor.so
 libWPEFrameworkTraceControl.so
 libWPEFrameworkWebServer.so
@@ -155,4 +157,10 @@ libWPEFrameworkDefinitions.so
 libv3ddriver.so
 content
 keybox.bin
+libnetflix.so
+libturbojpeg.so
+libJavaScriptCoreNetflix.so
+libnghttp2.so
+libvorbisidec.so
+libogg.so
 playready
