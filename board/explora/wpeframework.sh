@@ -48,8 +48,8 @@ case "$1" in
 		ln -s $SOURCE/root/OCDM $DESTINATION/root/OCDM
 	fi
 
-	DRMSTORE=/tmp/drmstore
-	if [! -f "$DRMSTORE"]; then
+	export DRMSTORE=/tmp/drmstore
+	if [ ! -f $DRMSTORE ]; then
 		touch /tmp/drmstore
 	fi
 
