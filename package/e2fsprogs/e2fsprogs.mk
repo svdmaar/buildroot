@@ -161,5 +161,12 @@ ifeq ($(BR2_PACKAGE_E2FSPROGS_TUNE2FS),y)
 E2FSPROGS_POST_INSTALL_TARGET_HOOKS += E2FSPROGS_TARGET_TUNE2FS_SYMLINK
 endif
 
+ifeq ($(BR2_PACKAGE_EXPLORA_SDK),y)
+define HOST_E2FSPROGS_CONDITIONAL_PATCH_HOOK
+	$(APPLY_PATCHES) $(@D) "$(TOPDIR)/package/e2fsprogs" 0003-rename_copy_file_range_to_copy_file_chunk.patch.conditional
+endef
+HOST_E2FSPROGS_POST_PATCH_HOOKS += HOST_E2FSPROGS_CONDITIONAL_PATCH_HOOK
+endif
+
 $(eval $(autotools-package))
 $(eval $(host-autotools-package))
