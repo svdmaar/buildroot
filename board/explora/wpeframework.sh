@@ -13,7 +13,14 @@ export V3D_DRM_DISABLE=1
 case "$1" in
 *)
 	export DESTINATION=/UserApps/explora
-	
+
+	playready_bin="/tmp/playready3x.bin"
+	if [ ! -f "${playready_bin}" ]; then
+		echo "ERROR: Playready ${playready_bin} not found!"
+	else
+		cp -rf "${playready_bin}" /usr/bin/bcm-drm-examples/pr
+	fi
+
 	# Currently the root system is read-only. Since we cannot add anything there we bind 
 	# existing directories with a copy of the actual system. All the stuff we want to 
 	# add is symbolicly linked in from our sources..
