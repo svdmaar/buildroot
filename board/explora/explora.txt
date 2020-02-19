@@ -163,4 +163,5 @@ libJavaScriptCoreNetflix.so
 libnghttp2.so
 libvorbisidec.so
 libogg.so
+libWPEFrameworkInputSwitch.so
 playready
