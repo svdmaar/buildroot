@@ -1,0 +1,93 @@
+diff -auNrd a/BSEAV/lib/gpu/v3d/platform/nexus/default_nexus.h b/BSEAV/lib/gpu/v3d/platform/nexus/default_nexus.h
+--- a/BSEAV/lib/gpu/v3d/platform/nexus/default_nexus.h	2018-08-20 09:08:36.318303058 -0400
++++ b/BSEAV/lib/gpu/v3d/platform/nexus/default_nexus.h	2018-08-20 09:14:18.017338688 -0400
+@@ -20,6 +20,7 @@
+ #ifdef NXPL_PLATFORM_EXCLUSIVE
+ #define NEXUS_DISPLAYHANDLE NEXUS_DisplayHandle
+ #define NEXUS_SURFACECLIENTHANDLE void *
++#define NEXUS_SURFACEHANDLE NEXUS_SurfaceHandle
+ #else
+ #define NEXUS_DISPLAYHANDLE void *
+ #define NEXUS_SURFACECLIENTHANDLE NEXUS_SurfaceClientHandle
+@@ -39,7 +40,7 @@
+ #ifdef USE_WAYLAND_EGL
+ typedef void (*WEGLReferenceBuffer)( void *userData, void *buffer, void *bufferCtx );
+ typedef void (*WEGLNewSingleBuffer)( void *userData, void *buffer, void *bufferCtx );
+-typedef void (*WEGLDispatchPending)( void *userData, bool force );
++typedef bool (*WEGLDispatchPending)( void *userData, bool force );
+ typedef void (*WEGLUpdateFence)( void *context, void *nativeWindow );
+ typedef struct _WEGLNativeWindowListener
+ {
+@@ -132,6 +133,8 @@
+ 
+ NXPL_EXPORT void NXPL_DestroyCompatiblePixmap(NXPL_PlatformHandle handle, void *pixmapHandle)
+    __attribute__((deprecated("Use Nexus surface with 3D compatibility flag instead")));
++extern bool NXPL_CreateCompatiblePixmapClone(NXPL_PlatformHandle handle, void **pixmapHandle, NEXUS_SURFACEHANDLE surface, BEGL_PixmapInfo *info);
++extern void NXPL_DestroyCompatiblePixmapClone(NXPL_PlatformHandle handle, void *pixmapHandle);
+ 
+ /* only valid for surface compositor */
+ /* gets the associated video pip window from the graphics window. */
+diff -auNrd a/BSEAV/lib/gpu/v3d/platform/nexus/display_nexus.cpp b/BSEAV/lib/gpu/v3d/platform/nexus/display_nexus.cpp
+--- a/BSEAV/lib/gpu/v3d/platform/nexus/display_nexus.cpp	2018-08-14 16:34:51.376338679 -0400
++++ b/BSEAV/lib/gpu/v3d/platform/nexus/display_nexus.cpp	2018-08-14 18:21:16.673489769 -0400
+@@ -310,6 +310,20 @@
+       NEXUS_Surface_Destroy(nexusSurface);
+ }
+ 
++bool NXPL_CreateCompatiblePixmapClone(NXPL_PlatformHandle handle, void **pixmapHandle, NEXUS_SURFACEHANDLE surface, BEGL_PixmapInfo *info)
++{
++   BEGL_DriverInterfaces *data = (BEGL_DriverInterfaces*)handle;
++
++   return false;
++}
++
++void NXPL_DestroyCompatiblePixmapClone(NXPL_PlatformHandle handle, void *pixmapHandle)
++{
++   BEGL_DriverInterfaces *data = (BEGL_DriverInterfaces*)handle;
++
++}
++
++
+ extern "C" void NXPL_GetDefaultNativeWindowInfoEXT(NXPL_NativeWindowInfoEXT *info)
+ {
+    if (info != NULL)
+diff -auNrd a/BSEAV/lib/gpu/vc5/platform/nexus/default_nexus.h b/BSEAV/lib/gpu/vc5/platform/nexus/default_nexus.h
+--- a/BSEAV/lib/gpu/vc5/platform/nexus/default_nexus.h	2018-08-14 16:35:04.336364589 -0400
++++ b/BSEAV/lib/gpu/vc5/platform/nexus/default_nexus.h	2018-08-14 16:34:53.980343882 -0400
+@@ -51,7 +51,7 @@
+ #ifdef USE_WAYLAND_EGL
+ typedef void (*WEGLReferenceBuffer)( void *userData, void *buffer, void *bufferCtx );
+ typedef void (*WEGLNewSingleBuffer)( void *userData, void *buffer, void *bufferCtx );
+-typedef void (*WEGLDispatchPending)( void *userData, bool force );
++typedef bool (*WEGLDispatchPending)( void *userData, bool force );
+ typedef void (*WEGLUpdateFence)( void *context, void *nativeWindow );
+ typedef struct _WEGLNativeWindowListener
+ {
+@@ -151,6 +151,9 @@
+ 
+ NXPL_EXPORT void NXPL_SetDisplayType(NXPL_PlatformHandle handle, NXPL_DisplayType type);
+ 
++extern bool NXPL_CreateCompatiblePixmapClone(NXPL_PlatformHandle handle, void **pixmapHandle, NEXUS_SURFACEHANDLE surface, BEGL_PixmapInfo *info);
++extern void NXPL_DestroyCompatiblePixmapClone(NXPL_PlatformHandle handle, void *pixmapHandle);
++
+ #ifndef NXPL_PLATFORM_EXCLUSIVE
+ /* only valid for surface compositor */
+ /* gets the associated video pip window from the graphics window. */
+diff -auNrd a/BSEAV/lib/gpu/vc5/platform/nexus/display_nexus.c b/BSEAV/lib/gpu/vc5/platform/nexus/display_nexus.c
+--- a/BSEAV/lib/gpu/vc5/platform/nexus/display_nexus.c	2018-08-14 16:35:04.336364589 -0400
++++ b/BSEAV/lib/gpu/vc5/platform/nexus/display_nexus.c	2018-08-14 16:34:53.980343882 -0400
+@@ -790,3 +790,14 @@
+    }
+ }
+ #endif
++
++bool NXPL_CreateCompatiblePixmapClone(NXPL_PlatformHandle handle, void **pixmapHandle, NEXUS_SURFACEHANDLE surface, struct BEGL_PixmapInfo *info)
++{
++   NXPL_InternalPlatformHandle *data = (NXPL_InternalPlatformHandle*)handle;
++   return false;
++}
++
++void NXPL_DestroyCompatiblePixmapClone(NXPL_PlatformHandle handle, void *pixmapHandle)
++{
++   NXPL_InternalPlatformHandle *data = (NXPL_InternalPlatformHandle*)handle;
++}

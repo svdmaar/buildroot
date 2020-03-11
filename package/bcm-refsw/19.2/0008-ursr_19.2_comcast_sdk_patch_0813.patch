@@ -1,0 +1,3875 @@
+diff -auNrd a/BSEAV/api/build/rules.mak b/BSEAV/api/build/rules.mak
+--- a/BSEAV/api/build/rules.mak	2019-09-24 17:35:16.000000000 -0400
++++ b/BSEAV/api/build/rules.mak	2019-09-26 15:52:33.193658961 -0400
+@@ -74,7 +74,12 @@
+ endif
+ $(ODIR)/%.o : %.c ${ODIR_FLAG}
+ 		@echo [Compile... $(notdir $<)]
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++		${Q_}$(CC) ${CDEP_FLAG} ${CFLAGS_STATIC} $(CFLAGS) $(PMLIB_CFLAGS) $(COPT_FLAGS) $(if $(findstring $@,$(ST_NOPROF_OBJS)),,${CFLAGS_BPROFILE}) -c $< -o $@
++else
+ 		${Q_}$(CC) ${CDEP_FLAG} ${CFLAGS_STATIC} $(CFLAGS) $(COPT_FLAGS) $(if $(findstring $@,$(ST_NOPROF_OBJS)),,${CFLAGS_BPROFILE}) -c $< -o $@
++endif
+ 
+ ifeq ($(SYSTEM),linux)
+ ifeq ($(BCHP_CHIP),7038)
+diff -auNrd a/BSEAV/app/atlas/build/Makefile b/BSEAV/app/atlas/build/Makefile
+--- a/BSEAV/app/atlas/build/Makefile	2019-09-26 15:24:38.000000000 -0400
++++ b/BSEAV/app/atlas/build/Makefile	2019-09-26 15:52:33.197659260 -0400
+@@ -140,6 +140,12 @@
+ ifneq ($(B_REFSW_ARCH),mips-linux)
+ DCC_SUPPORT ?= y
+ endif
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++ifeq ($(CABLECARD_SUPPORT), MPOD)
++CABLECARD_SUPPORT = y
++endif
++endif
+ ifeq ($(CABLE_SUPPORT), y)
+ CABLECARD_SUPPORT ?= y
+ DSG_SUPPORT ?= y
+@@ -1868,4 +1874,4 @@
+ 	@echo "clean-bip       - clean bip (skip: openssl)"
+ 	@echo "dist-clean      - clean atlas and libraries"
+ 
+--include $(ATLAS_ODIR)/*.d
++-include $(ATLAS_ODIR)/*.d
+\ No newline at end of file
+diff -auNrd a/BSEAV/lib/gpu/include/EGL/eglext.h b/BSEAV/lib/gpu/include/EGL/eglext.h
+--- a/BSEAV/lib/gpu/include/EGL/eglext.h	2019-09-24 17:35:19.000000000 -0400
++++ b/BSEAV/lib/gpu/include/EGL/eglext.h	2019-09-26 15:52:33.197659260 -0400
+@@ -38,6 +38,14 @@
+ 
+ #include <EGL/eglplatform.h>
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++/* We want this */
++#ifndef EGL_EGLEXT_PROTOTYPES
++#define EGL_EGLEXT_PROTOTYPES
++#endif
++#endif
++
++
+ /* CUSTOM MODIFICATION: include Wayland-specific extensions.
+  * This is not part of the Khronos official eglext.h file
+  * because WL_bind_wayland_display extension is not in the Khronos registry.
+diff -auNrd a/BSEAV/lib/gpu/include/EGL/eglplatform.h b/BSEAV/lib/gpu/include/EGL/eglplatform.h
+--- a/BSEAV/lib/gpu/include/EGL/eglplatform.h	2019-09-24 17:35:19.000000000 -0400
++++ b/BSEAV/lib/gpu/include/EGL/eglplatform.h	2019-09-26 15:52:33.197659260 -0400
+@@ -33,8 +33,15 @@
+  * by sending them to the public Khronos Bugzilla (http://khronos.org/bugzilla)
+  * by filing a bug against product "EGL" component "Registry".
+  */
+-
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++#ifndef __khrplatform_h_
++ #include <KHR/khrplatform.h>
++#else
++#define BROADCOM_PLATFORM 1
++#endif
++#else
+ #include <KHR/khrplatform.h>
++#endif
+ 
+ /* Macros used in EGL function prototype declarations.
+  *
+diff -auNrd a/BSEAV/lib/gpu/vc5/driver/V3DDriver.mk b/BSEAV/lib/gpu/vc5/driver/V3DDriver.mk
+--- a/BSEAV/lib/gpu/vc5/driver/V3DDriver.mk	2019-09-24 17:35:19.000000000 -0400
++++ b/BSEAV/lib/gpu/vc5/driver/V3DDriver.mk	2019-09-26 15:52:33.197659260 -0400
+@@ -167,7 +167,12 @@
+ # Add any customer specific cflags from the command line
+ CFLAGS += $(V3D_EXTRA_CFLAGS)
+ 
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++LDFLAGS += -L$(LIBDIR) -lpthread -lrt -ldl -lm
++else
+ LDFLAGS += -L$(LIBDIR) -lpthread -ldl -lm
++endif
+ 
+ # Bind references to global functions to the definitions within the khronos
+ # library. This in particular means eglGetProcAddress will always return the
+diff -auNrd a/BSEAV/lib/otfpvr/botf_gop_manager.c b/BSEAV/lib/otfpvr/botf_gop_manager.c
+--- a/BSEAV/lib/otfpvr/botf_gop_manager.c	2019-09-24 17:35:19.000000000 -0400
++++ b/BSEAV/lib/otfpvr/botf_gop_manager.c	2019-09-26 15:52:33.197659260 -0400
+@@ -505,6 +505,8 @@
+     else {
+         gop->gop.headless_gop_frame_count = 0;
+     }
++    /* IMS# 615746: Fix GOP mode for smooth rewind */
++    if (manager->current) manager->prev = manager->current; /* manager->current can be null because of zero frame gops */
+     manager->prev = manager->current;
+ 	manager->current = gop;
+     b_itb_fill_segment(manager, &gop->gop.itb_meta, &manager->scode_meta, scode);
+diff -auNrd a/BSEAV/lib/otfpvr/botf_gop_manager.h b/BSEAV/lib/otfpvr/botf_gop_manager.h
+--- a/BSEAV/lib/otfpvr/botf_gop_manager.h	2019-08-22 12:31:49.000000000 -0400
++++ b/BSEAV/lib/otfpvr/botf_gop_manager.h	2019-09-26 15:52:33.197659260 -0400
+@@ -67,7 +67,8 @@
+ /* maximum number of GOPS in the CDB buffer */
+ #define B_PVR_MAX_GOPS 60
+ /* maximum number of FRAMES in the GOP */
+-#define BOTF_GOP_MAX_FRAMES	48
++/* IMS# 615746: We have seen gop size as long as 60 frames */
++#define BOTF_GOP_MAX_FRAMES	60
+ 
+ #define B_FRAME_I	1
+ #define B_FRAME_P	2
+diff -auNrd a/BSEAV/opensource/openssl/Makefile b/BSEAV/opensource/openssl/Makefile
+--- a/BSEAV/opensource/openssl/Makefile	2019-09-24 17:35:21.000000000 -0400
++++ b/BSEAV/opensource/openssl/Makefile	2019-09-26 15:52:33.197659260 -0400
+@@ -225,6 +225,17 @@
+ 	@echo "B_OPENSSL_CFLAGS:="$(B_OPENSSL_CFLAGS) >> ${B_OPENSSL_VER_FILENAME}
+ 	@echo "B_OPENSSL_LDFLAGS:="$(B_OPENSSL_LDFLAGS) >> ${B_OPENSSL_VER_FILENAME}
+ 	@echo "B_OPENSSL_PKG_PATH:="$(B_OPENSSL_PKG_FOLDER) >> ${B_OPENSSL_VER_FILENAME}
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1) 
++	@echo "================ create openssl_ver.inc to BSEAV/lib/openssl (for applib 2.1) "
++	@rm -rf openssl_ver.inc
++	@echo "OPENSSL_VER="$(OPENSSL_VER) >> openssl_ver.inc
++	@echo "OPENSSL_NAME="$(OPENSSL_NAME) >> openssl_ver.inc
++	@echo "OPENSSL_PATH="$(OPENSSL_BASE_FOLDER) >> openssl_ver.inc
++	@echo "OPENSSL_CFLAGS:="$(OPENSSL_INC_CFLAGS) >> openssl_ver.inc
++	@echo "OPENSSL_LDFLAGS:="$(OPENSSL_INC_LDFLAGS) >> openssl_ver.inc
++	@echo "OPENSSL_PKG_PATH:="$(OPENSSL_PKG_FOLDER) >> openssl_ver.inc
++endif
+ 	@echo "================ OpenSSL Compiled"
+ endif   #  ifeq ($(B_REFSW_OPENSSL_IS_EXTERNAL),y)
+ 
+diff -auNrd a/magnum/basemodules/dbg/bdbg.c b/magnum/basemodules/dbg/bdbg.c
+--- a/magnum/basemodules/dbg/bdbg.c	2019-09-24 17:35:24.000000000 -0400
++++ b/magnum/basemodules/dbg/bdbg.c	2019-09-26 15:52:33.197659260 -0400
+@@ -1698,7 +1698,8 @@
+     return buf+i+1;
+ }
+ 
+-#if B_REFSW_DEBUG_COMPACT_ERR
++/* Gabe 3/22/17: Force enable this code so precompiled libries can fine it. It doesn't hurt to have this enabled even if we don't have B_REFSW_DEBUG_COMPACT_ERR enabled */
++#if B_REFSW_DEBUG_COMPACT_ERR || COMCAST_RDK_SPECIFIC_CHANGE || 1
+ void
+ BDBG_P_Assert_isrsafe(bool expr, const char *file, unsigned line)
+ {
+diff -auNrd a/magnum/basemodules/dbg/bdbg.h b/magnum/basemodules/dbg/bdbg.h
+--- a/magnum/basemodules/dbg/bdbg.h	2019-09-24 17:35:24.000000000 -0400
++++ b/magnum/basemodules/dbg/bdbg.h	2019-09-26 15:52:33.197659260 -0400
+@@ -957,7 +957,11 @@
+ #else
+ #define BDBG_ASSERT(expr) (expr) ? (void) 0 : BDBG_P_AssertFailed(#expr, BSTD_FILE, BSTD_LINE)
+ #endif
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++#define BDBG_CASSERT(expr) do switch(0){case (expr):;} while(0)
++#else
+ #define BDBG_CASSERT(expr) do switch(0){case 0: case (expr):;} while(0)
++#endif
+ #define BDBG_CWARNING(expr) do {if(0){int unused = 1/(expr);unused++;}} while(0)
+ #define BDBG_CWARNING_EXPR(expr) ((1/(expr)) ? 0 : 0)
+ 
+diff -auNrd a/magnum/basemodules/mem/bmem_debug.c b/magnum/basemodules/mem/bmem_debug.c
+--- a/magnum/basemodules/mem/bmem_debug.c	2019-08-22 12:32:06.000000000 -0400
++++ b/magnum/basemodules/mem/bmem_debug.c	2019-09-26 15:52:33.197659260 -0400
+@@ -219,6 +219,11 @@
+ 	BDBG_OBJECT_ASSERT(pheap, BMEM_Heap);
+ 
+     BDBG_MODULE_LOG(BMEM_ALLOCATED, ("heap:%p(%#x):", pheap, (unsigned long)pheap->ulOffset));
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++	/* MOT7425-5965: Excessive logs are causing mpod failure. Suppress the messages
++         */
++    BDBG_MODULE_LOG(BMEM_ALLOCATED, ("Heap out of memory, supressed detailed logs to avoid OS errors"));
++#else
+     BDBG_MODULE_LOG(BMEM_ALLOCATED, ("offset,totalsize,filename,line"));
+     BDBG_MSG((" addr,endaddr"));
+     BDBG_MSG(("pbi[start..size..end]: [fscrap][totalsize][endscrap] [nextpbi]"));
+@@ -228,7 +233,6 @@
+     {
+         BMEM_Dbg_DumpBlock(pheap, pbi, false);
+     }
+-
+ 	BDBG_MODULE_LOG(BMEM_FREE, ("heap:%p(%#x):", pheap, (unsigned long)pheap->ulOffset));
+ 	BDBG_MODULE_LOG(BMEM_FREE, ("offset,totalsize"));
+ 	BDBG_MSG(("pbi[start..size..end]: [fscrap][totalsize][endscrap] [nextpbi]"));
+@@ -240,6 +244,7 @@
+ 		BMEM_Dbg_DumpBlock(pheap, pbi, true);
+ 	}
+ 
++#endif
+ 	BDBG_LOG(("Heap %p Total Size: %ld, Allocated: %ld, Free: %ld", pheap, pheap->zSize, pheap->ulTotalAllocated, ulFree));
+ #else
+     BSTD_UNUSED(pheap);
+diff -auNrd a/magnum/portinginterface/kir/src/bkir.c b/magnum/portinginterface/kir/src/bkir.c
+--- a/magnum/portinginterface/kir/src/bkir.c	2019-09-24 17:35:26.000000000 -0400
++++ b/magnum/portinginterface/kir/src/bkir.c	2019-09-26 15:52:33.197659260 -0400
+@@ -213,6 +213,11 @@
+ 
+ BDBG_MODULE(bkir);
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++#define XMP2_NO_ACK
++#endif
++#define DEV_MAGIC_ID            ((BERR_KIR_ID<<16) | 0xFACE)
++
+ #define BKIR_CHK_RETCODE( rc, func )        \
+ do {                                        \
+     if( (rc = BERR_TRACE(func)) != BERR_SUCCESS ) \
+@@ -2879,11 +2884,18 @@
+ )
+ {
+     BKIR_Handle hDev;
+-
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    uint32_t                lval;
++#endif
+     hDev = hChn->hKir;
+     BREG_Write32(hDev->hRegister, hChn->coreOffset + BCHP_KBD1_CIR_ADDR, addr);
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    lval = data& 0xFFF;
++    BREG_Write32(hDev->hRegister, hChn->coreOffset + BCHP_KBD1_CIR_DATA, lval);
++#else
+     /* Note: MOST of the data registers are 12-bits in length, but some are larger (don't mask) */
+     BREG_Write32(hDev->hRegister, hChn->coreOffset + BCHP_KBD1_CIR_DATA, data);
++#endif	
+ }
+ 
+ void BKIR_P_ConfigCir (
+diff -auNrd a/magnum/portinginterface/xpt/include/bxpt_capabilities.h b/magnum/portinginterface/xpt/include/bxpt_capabilities.h
+--- a/magnum/portinginterface/xpt/include/bxpt_capabilities.h	2019-09-24 17:35:26.000000000 -0400
++++ b/magnum/portinginterface/xpt/include/bxpt_capabilities.h	2019-09-26 15:52:33.197659260 -0400
+@@ -169,7 +169,12 @@
+ #endif
+ 
+ /* misc */
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++/* PACXG1V3-2549: Macroblock on high bit rate HD channels, increase bandwidth to 39Mbps */
++#define BXPT_P_INITIAL_BUF_BITRATE          (39000000)
++#else
+ #define BXPT_P_INITIAL_BUF_BITRATE          (30000000) /* in Mbps */
++#endif
+ #define BXPT_HAS_PIPELINE_ERROR_REPORTING   1
+ #define BXPT_HAS_AVS                        1
+ 
+diff -auNrd a/magnum/syslib/hdcplib/src/common/bhdcplib.c b/magnum/syslib/hdcplib/src/common/bhdcplib.c
+--- a/magnum/syslib/hdcplib/src/common/bhdcplib.c	2019-09-24 17:35:26.000000000 -0400
++++ b/magnum/syslib/hdcplib/src/common/bhdcplib.c	2019-09-26 15:52:33.197659260 -0400
+@@ -108,7 +108,11 @@
+ 	100					/* msWaitForValidVideo */,
+ 	0 					/* msWaitForRxR0Margin */,
+ 	100				 	/* msIntervalKsvFifoReadyCheck */,
+-	0					/* msWaitForKsvFifoMargin */,
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++	3000					/* msWaitForKsvFifoMargin */,
++#else
++        0
++#endif
+ 	BHDM_HDCP_REPEATER_MAX_DEVICE_COUNT		/* uiMaxDeviceCount */,
+ 	BHDM_HDCP_REPEATER_MAX_DEPTH			/* uiMaxDepth */
+ #if BHDCPLIB_HAS_HDCP_2X_SUPPORT
+diff -auNrd a/nexus/base/include/nexus_base_debug.h b/nexus/base/include/nexus_base_debug.h
+--- a/nexus/base/include/nexus_base_debug.h	2019-08-22 12:32:11.000000000 -0400
++++ b/nexus/base/include/nexus_base_debug.h	2019-09-26 15:52:33.197659260 -0400
+@@ -50,15 +50,11 @@
+ /* this header files used to control (enable or disable) debug features of the nexus */
+ 
+ #if BDBG_DEBUG_BUILD
+-#ifndef NEXUS_P_DEBUG_MODULE_LOCKS
+-#define NEXUS_P_DEBUG_MODULE_LOCKS   1
+-#endif
++/* Disable NEXUS_P_DEBUG_MODULE_LOCKS for PACXG1V3-1663*/
+ #ifndef NEXUS_P_DEBUG_CALLBACKS
+ #define NEXUS_P_DEBUG_CALLBACKS 1
+ #endif
+ #endif
+ 
+-#define NEXUS_TRACK_STOP_CALLBACKS 0
+-
+ #endif /* NEXUS_BASE_DEBUG_H */
+ 
+diff -auNrd a/nexus/base/src/nexus_base_image.c b/nexus/base/src/nexus_base_image.c
+--- a/nexus/base/src/nexus_base_image.c	2019-09-24 17:35:26.000000000 -0400
++++ b/nexus/base/src/nexus_base_image.c	2019-09-26 15:52:33.197659260 -0400
+@@ -57,8 +57,11 @@
+ BDBG_MODULE(nexus_base_image);
+ 
+ #include <stdio.h>
+-
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++#define DEFAULT_PATH              "/usr/lib"
++#else
+ #define DEFAULT_PATH              "."
++#endif
+ #define IMAGE_BUFFER_SIZE         (64 * 1024)
+ 
+ typedef struct
+diff -auNrd a/nexus/build/os/linuxkernel/os_flags.inc b/nexus/build/os/linuxkernel/os_flags.inc
+--- a/nexus/build/os/linuxkernel/os_flags.inc	2019-09-24 17:35:26.000000000 -0400
++++ b/nexus/build/os/linuxkernel/os_flags.inc	2019-09-26 15:52:33.197659260 -0400
+@@ -158,6 +158,28 @@
+ else
+ # ARM
+ 
++# CFLAGS only for OS abstraction files
++#COMCAST_RDK_SPECIFIC_CHANGE replaced NEXUS_KERNEL_CFLAGS with NEXUS_CFLAGS
++NEXUS_CFLAGS +=  \
++        -DLINUX \
++        -D__KERNEL__ \
++        -I$(LINUX_OUT)/include\
++        -I$(LINUX)/include\
++        -I$(LINUX_OUT)/arch/$(ARM_ARCH)/include\
++        -I$(LINUX)/arch/$(ARM_ARCH)/include\
++        -include linux/kconfig.h\
++        -I$(LINUX_OUT)/arch/$(ARM_ARCH)/include/generated\
++        -I$(LINUX_OUT)/arch/$(ARM_ARCH)/include/uapi\
++        -I$(LINUX)/arch/$(ARM_ARCH)/include/uapi\
++        -I$(LINUX_OUT)/arch/$(ARM_ARCH)/include/generated/uapi\
++        -I$(LINUX)/arch/$(ARM_ARCH)/include/generated/uapi\
++        -I$(LINUX_OUT)/include/uapi\
++        -I$(LINUX)/include/uapi\
++        -I$(LINUX_OUT)/include/generated/uapi
++
++#COMCAST_RDK_SPECIFIC_CHANGE  added __ARM_PCS_VFP to NEXUS_CFLAGS
++NEXUS_CFLAGS +=  \
++    -D__ARM_PCS_VFP
+ 
+ ifeq ($(filter ${B_REFSW_ARCH}, aarch64-linux), ${B_REFSW_ARCH})
+ NEXUS_CFLAGS += $(filter-out -Wall -Wundef -O%,$(BCM_KBUILD_CFLAGS))
+diff -auNrd a/nexus/examples/memconfig.c b/nexus/examples/memconfig.c
+--- a/nexus/examples/memconfig.c	2019-09-24 17:35:26.000000000 -0400
++++ b/nexus/examples/memconfig.c	2019-09-26 15:52:33.197659260 -0400
+@@ -71,6 +71,11 @@
+     if (pPlatformSettings->heap[i].heapType & NEXUS_HEAP_TYPE_MAIN) {
+         return "main";
+     }
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    if (pPlatformSettings->heap[i].heapType & NEXUS_HEAP_TYPE_3PARTY_DRIVER) {
++        return "3PARTY";
++#endif
++    }
+     else if (pPlatformSettings->heap[i].heapType & NEXUS_HEAP_TYPE_PICTURE_BUFFERS) {
+         return "picture buffers";
+     }
+diff -auNrd a/nexus/examples/multiprocess/b_readcc.c b/nexus/examples/multiprocess/b_readcc.c
+--- a/nexus/examples/multiprocess/b_readcc.c	1969-12-31 19:00:00.000000000 -0500
++++ b/nexus/examples/multiprocess/b_readcc.c	2019-09-26 15:52:33.197659260 -0400
+@@ -0,0 +1,286 @@
++/******************************************************************************
++ *    (c)2010-2012 Broadcom Corporation
++ *
++ * This program is the proprietary software of Broadcom Corporation and/or its licensors,
++ * and may only be used, duplicated, modified or distributed pursuant to the terms and
++ * conditions of a separate, written license agreement executed between you and Broadcom
++ * (an "Authorized License").  Except as set forth in an Authorized License, Broadcom grants
++ * no license (express or implied), right to use, or waiver of any kind with respect to the
++ * Software, and Broadcom expressly reserves all rights in and to the Software and all
++ * intellectual property rights therein.  IF YOU HAVE NO AUTHORIZED LICENSE, THEN YOU
++ * HAVE NO RIGHT TO USE THIS SOFTWARE IN ANY WAY, AND SHOULD IMMEDIATELY
++ * NOTIFY BROADCOM AND DISCONTINUE ALL USE OF THE SOFTWARE.
++ *
++ * Except as expressly set forth in the Authorized License,
++ *
++ * 1.     This program, including its structure, sequence and organization, constitutes the valuable trade
++ * secrets of Broadcom, and you shall use all reasonable efforts to protect the confidentiality thereof,
++ * and to use this information only in connection with your use of Broadcom integrated circuit products.
++ *
++ * 2.     TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE SOFTWARE IS PROVIDED "AS IS"
++ * AND WITH ALL FAULTS AND BROADCOM MAKES NO PROMISES, REPRESENTATIONS OR
++ * WARRANTIES, EITHER EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE, WITH RESPECT TO
++ * THE SOFTWARE.  BROADCOM SPECIFICALLY DISCLAIMS ANY AND ALL IMPLIED WARRANTIES
++ * OF TITLE, MERCHANTABILITY, NONINFRINGEMENT, FITNESS FOR A PARTICULAR PURPOSE,
++ * LACK OF VIRUSES, ACCURACY OR COMPLETENESS, QUIET ENJOYMENT, QUIET POSSESSION
++ * OR CORRESPONDENCE TO DESCRIPTION. YOU ASSUME THE ENTIRE RISK ARISING OUT OF
++ * USE OR PERFORMANCE OF THE SOFTWARE.
++ *
++ * 3.     TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL BROADCOM OR ITS
++ * LICENSORS BE LIABLE FOR (i) CONSEQUENTIAL, INCIDENTAL, SPECIAL, INDIRECT, OR
++ * EXEMPLARY DAMAGES WHATSOEVER ARISING OUT OF OR IN ANY WAY RELATING TO YOUR
++ * USE OF OR INABILITY TO USE THE SOFTWARE EVEN IF BROADCOM HAS BEEN ADVISED OF
++ * THE POSSIBILITY OF SUCH DAMAGES; OR (ii) ANY AMOUNT IN EXCESS OF THE AMOUNT
++ * ACTUALLY PAID FOR THE SOFTWARE ITSELF OR U.S. $1, WHICHEVER IS GREATER. THESE
++ * LIMITATIONS SHALL APPLY NOTWITHSTANDING ANY FAILURE OF ESSENTIAL PURPOSE OF
++ * ANY LIMITED REMEDY.
++ *
++ * $brcm_Workfile: decode_client.c $
++ * $brcm_Revision: 29 $
++ * $brcm_Date: 7/18/12 3:46p $
++ *
++ * Module Description:
++ *
++ * Revision History:
++ *
++ * $brcm_Log: /nexus/examples/multiprocess/decode_client.c $
++ * 
++ *****************************************************************************/
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++#include "bstd.h"
++#include "bkni.h"
++#include "b_readcc.h"
++#include "budp_dccparse.h"
++
++BDBG_MODULE(b_readcc);
++
++#define B_MAX_VBI_CC_COUNT  32
++/* NOTE: usermode IPC has 4096 byte limit, so must keep under this for now */
++#define BUFFER_SIZE 2048
++/* CC_TYPE only has 2 bits, extra bit in NEXUS_ClosedCaptionData is used to identify DVS157/ATSC53 data
++ * It will be masked out before passing to cc library.
++ */
++#define CC_TYPE_ATSC53_BIT 0x100
++
++static BUDP_DCCparse_Format UserDataFormat = BUDP_DCCparse_Format_Unknown;
++
++static NEXUS_VideoCodec VideoCodec = NEXUS_VideoCodec_eMpeg2;
++static int non_cc_data = 0;
++
++NEXUS_Error NEXUS_SimpleVideoDecoder_SetUserDataFormatFilter(NEXUS_SimpleVideoDecoderHandle videoDecoder,
++    NEXUS_UserDataFormat format)
++{
++    BSTD_UNUSED(format);
++    BSTD_UNUSED(videoDecoder);
++    /* TODO: only NEXUS_UserDataFormat_eAny is supported now*/
++    BDBG_WRN(("%s has no effect, all cc data will be passed to app", __FUNCTION__));
++    UserDataFormat = BUDP_DCCparse_Format_Unknown;
++    non_cc_data = 0;
++
++    return 0;
++}
++
++NEXUS_Error NEXUS_SimpleVideoDecoder_SetCCVideoCodec(NEXUS_SimpleVideoDecoderHandle videoDecoder,
++    NEXUS_VideoCodec codec)
++{
++    BSTD_UNUSED(videoDecoder);
++    VideoCodec = codec;
++    return 0;
++}
++
++NEXUS_Error NEXUS_SimpleVideoDecoder_ReadClosedCaption( NEXUS_SimpleVideoDecoderHandle videoDecoder, NEXUS_ClosedCaptionData *pData, unsigned totalEntries, unsigned *pNumRead )
++{
++    unsigned char *bufferPtr;
++    unsigned char buffer[BUFFER_SIZE];
++    unsigned size;
++    const NEXUS_UserDataHeader *pHeader;
++    unsigned total;
++    int rc;
++    
++    total = *pNumRead = 0;
++    
++    rc = NEXUS_SimpleVideoDecoder_ReadUserDataBuffer(videoDecoder, buffer, BUFFER_SIZE, &size);
++    if (rc) return BERR_TRACE(rc);
++    
++    /* there may be >1 header in a single read */
++    bufferPtr = buffer;
++    while (size) {
++        unsigned pad = 0;
++        unsigned offset = 0;
++        pHeader = (const NEXUS_UserDataHeader *)bufferPtr;
++        if (size < sizeof(*pHeader) || size < pHeader->blockSize) {
++            BDBG_WRN(("unable to process %d bytes", size));
++            break;
++        }
++        pad = pHeader->blockSize - (pHeader->payloadSize + (sizeof(*pHeader)));
++        if (pad >= 4) {
++            BDBG_ERR(("Invalid Padding %u bytes, reset to 0", pad));
++            pad = 0;
++        }
++    
++        /* sample code for using UDP to parse userdata in an app */
++        while (offset < pHeader->payloadSize) {
++            BAVC_USERDATA_info info;
++            size_t bytesParsed;
++            uint8_t cc_count;
++            BUDP_DCCparse_ccdata ccData[B_MAX_VBI_CC_COUNT]; /* 32 is hardcoded into UDP */
++            unsigned i;
++
++            /* yes, we must translate from magnum -> nexus -> magnum, but this gives the app maximum flexibility */
++            BKNI_Memset(&info, 0, sizeof(info));
++            info.pUserDataBuffer = (uint8_t*)pHeader + sizeof(*pHeader);
++            info.ui32UserDataBufSize = pHeader->payloadSize;
++
++            /* these CASSERT's are in nexus */
++            BDBG_CASSERT(BAVC_Polarity_eFrame == (BAVC_Polarity)NEXUS_PicturePolarity_eFrame);
++            BDBG_CASSERT(BAVC_USERDATA_Type_eSlice == (BAVC_USERDATA_Type)NEXUS_UserDataType_eSlice);
++            BDBG_CASSERT(BAVC_USERDATA_PictureCoding_eB == (BAVC_PictureCoding)NEXUS_PictureCoding_eB);
++            
++            info.eSourcePolarity = pHeader->polarity;
++            info.eUserDataType = pHeader->type;
++            info.bTopFieldFirst = pHeader->topFieldFirst;
++            info.bRepeatFirstField = pHeader->repeatFirstField;
++            info.ePicCodingType = pHeader->pictureCoding;
++            info.ui32PTS = pHeader->pts;
++            info.bPTSValid = pHeader->ptsValid;
++            info.ui32PicCodExt[0] = pHeader->pictureCodingExtension[0];
++            info.ui32PicCodExt[1] = pHeader->pictureCodingExtension[1];
++/* CSP727596: XITHREE-2256, support AVE */
++            if ( NEXUS_UserDataType_eSei == info.eUserDataType) {
++
++                rc = BUDP_DCCparse_SEI_isr(&info, offset, &bytesParsed, &cc_count, ccData);
++            }
++            else {
++                rc = BUDP_DCCparse_isr(&info, offset, &bytesParsed, &cc_count, ccData);
++#if 0
++                /* check for MPEG2 userdata 3D signaling */
++                if (videoDecoder->startSettings.codec == NEXUS_VideoCodec_eMpeg2) {
++                    if (rc == BERR_BUDP_NO_DATA && (offset+bytesParsed < info->ui32UserDataBufSize)) { /* bytesParsed can be non-zero even if rc!=0 */
++                        rc = BUDP_JP3Dstart_isr(info, offset, &bytesParsed);
++#if 0 /* for debug */
++                        for (i=offset; i<offset+bytesParsed; i++) {
++                            BKNI_Printf("%02x ", *((uint8_t*)(info->pUserDataBuffer)+i)); /* it should be 0x000001B2 0x4A503344 */
++                        }
++                        BKNI_Printf("\n");
++#endif
++    
++                        if (rc == BERR_SUCCESS) {
++                            while (1) {
++                                uint16_t type;
++                                offset += bytesParsed;
++                                rc = BUDP_JP3Dparse_isr(info, offset, &bytesParsed, &type);
++#if 0 /* for debug */
++                                for (i=offset; i<offset+bytesParsed; i++) {
++                                    BKNI_Printf("%02x ", *((uint8_t*)(info->pUserDataBuffer)+i)); /* it should be 0x038?04FF, where ? is the 3D-orientation  */
++                                }
++                                BKNI_Printf("\n");
++#endif
++    
++                                if (rc || !bytesParsed) break;
++                                NEXUS_VideoDecoder_P_Jp3dSignal_isr(videoDecoder, type);
++                            }
++                        }
++                        else {
++                            offset += bytesParsed;
++                        }
++                        continue; /* no more userdata to consume */
++                    }
++                }
++
++#endif
++            }
++            if (cc_count > B_MAX_VBI_CC_COUNT) BDBG_ERR((" CC overflow %d", cc_count));
++
++            if (bytesParsed==0) { /* we aren't going anywhere */
++                break;
++            }            
++
++            offset += bytesParsed;
++            BDBG_MSG(("BUDP_DCCparse   bytesParsed %d cc_count%d  totalEntries %d", bytesParsed, cc_count, totalEntries ));
++
++            /* We process bytesParsed even with error code. seems a bit dangerous. */
++            if (rc == BERR_BUDP_PARSE_ERROR) {
++                break;
++            }
++            else if (rc != BERR_SUCCESS) {
++                continue;
++            }
++
++            for (i=0;i<cc_count && total<totalEntries;i++) {
++
++#if 0
++                if ( BUDP_DCCparse_Format_Unknown == UserDataFormat)
++                    UserDataFormat =  ccData[i].format;
++                
++                if (UserDataFormat != ccData[i].format) continue;
++#else
++                /*
++                 * CSP726622:  
++                 * BPV-5817 pass both 608 and 708 data, Comcast cc library will decide which one to use
++                 */
++#endif
++                if ( !(ccData[i].format == BUDP_DCCparse_Format_ATSC53 || 
++                        ccData[i].format == BUDP_DCCparse_Format_DVS053 ||
++                       ccData[i].format == BUDP_DCCparse_Format_DVS157)
++                     ) {   
++                    non_cc_data++;
++                    /* only print the first non_cc_data */
++                    if (non_cc_data == 1) {
++                        BDBG_ERR(("non CC data %d dropped, isAnalog %d, format %02x,  %02x %02x", non_cc_data, ccData[i].bIsAnalog, 
++                                  ccData[i].format, ccData[i].cc_data_1, ccData[i].cc_data_2));
++                    }
++                    continue;
++                }
++                if (ccData[i].bIsAnalog) { 
++                    if (ccData[i].cc_valid) {
++                        /* EIA-608 */
++                        pData[total].field = (ccData[i].polarity==BAVC_Polarity_eTopField)?0:1;
++                        pData[total].data[0] = ccData[i].cc_data_1;
++                        pData[total].data[1] = ccData[i].cc_data_2;
++                        /* some SD channels carry 608 data in both DVS157 (SCTE-20) and ATSC53(SCTE-21) format, 
++                         * TAG ATSC53 data so it won't create duplicated characters.
++                         */
++                        if (ccData[i].format == BUDP_DCCparse_Format_ATSC53 || 
++                            ccData[i].format == BUDP_DCCparse_Format_DVS053 ) {   
++                            pData[total].field = (ccData[i].seq.cc_type | CC_TYPE_ATSC53_BIT);
++                        }
++                        pData[total].noData = !ccData[i].cc_valid; /* pass the cc_valid, comcast cc will use it */
++                        BDBG_MSG(("pData[%d]: isAnalog %d, fmt %02x, nodata %02x, %02x %02x %02x", total, ccData[i].bIsAnalog, ccData[i].format, 
++                              pData[total].noData, pData[total].field, pData[total].data[0], pData[total].data[1]));
++                        total++;    
++                    }
++                    /* don't send invalid 608 data */
++                }
++                else {
++                    pData[total].field = ccData[i].seq.cc_type; /* can be any one of 0,1,2 or 3 */
++                    pData[total].data[0] = ccData[i].cc_data_1;
++                    pData[total].data[1] = ccData[i].cc_data_2;
++                    pData[total].noData = !ccData[i].cc_valid; /* must still send invalid 708 data */
++                    /* some SD channels carry 608 data in both DVS157 (SCTE-20) and ATSC53(SCTE-21) format, 
++                     * TAG ATSC53 data so it won't create duplicated characters.
++                     */
++                    if (ccData[i].format == BUDP_DCCparse_Format_ATSC53 || 
++                        ccData[i].format == BUDP_DCCparse_Format_DVS053 ) {   
++                        pData[total].field = (ccData[i].seq.cc_type | CC_TYPE_ATSC53_BIT);
++                    }
++                    BDBG_MSG(("pData[%d]: isAnalog %d, fmt %02x, nodata %02x, %02x %02x %02x", total, ccData[i].bIsAnalog, ccData[i].format, 
++                              pData[total].noData, pData[total].field, pData[total].data[0], pData[total].data[1]));
++
++                    total++;    
++                }
++            }
++            if (i<cc_count) {
++                BDBG_WRN(("dropped %d entries of cc data", cc_count - i));
++            }
++        }        
++        /* advance pointer and decrease size */
++        offset += pad;
++        size -= pHeader->blockSize;
++        bufferPtr = (uint8_t*)bufferPtr + pHeader->blockSize;
++    }
++    
++    *pNumRead = total;
++    
++    return 0;
++}
++#endif //COMCAST_RDK_SPECIFIC_CHANGE
+diff -auNrd a/nexus/examples/multiprocess/b_readcc.h b/nexus/examples/multiprocess/b_readcc.h
+--- a/nexus/examples/multiprocess/b_readcc.h	1969-12-31 19:00:00.000000000 -0500
++++ b/nexus/examples/multiprocess/b_readcc.h	2019-09-26 15:52:33.197659260 -0400
+@@ -0,0 +1,86 @@
++/******************************************************************************
++ *    (c)2010-2012 Broadcom Corporation
++ *
++ * This program is the proprietary software of Broadcom Corporation and/or its licensors,
++ * and may only be used, duplicated, modified or distributed pursuant to the terms and
++ * conditions of a separate, written license agreement executed between you and Broadcom
++ * (an "Authorized License").  Except as set forth in an Authorized License, Broadcom grants
++ * no license (express or implied), right to use, or waiver of any kind with respect to the
++ * Software, and Broadcom expressly reserves all rights in and to the Software and all
++ * intellectual property rights therein.  IF YOU HAVE NO AUTHORIZED LICENSE, THEN YOU
++ * HAVE NO RIGHT TO USE THIS SOFTWARE IN ANY WAY, AND SHOULD IMMEDIATELY
++ * NOTIFY BROADCOM AND DISCONTINUE ALL USE OF THE SOFTWARE.
++ *
++ * Except as expressly set forth in the Authorized License,
++ *
++ * 1.     This program, including its structure, sequence and organization, constitutes the valuable trade
++ * secrets of Broadcom, and you shall use all reasonable efforts to protect the confidentiality thereof,
++ * and to use this information only in connection with your use of Broadcom integrated circuit products.
++ *
++ * 2.     TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE SOFTWARE IS PROVIDED "AS IS"
++ * AND WITH ALL FAULTS AND BROADCOM MAKES NO PROMISES, REPRESENTATIONS OR
++ * WARRANTIES, EITHER EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE, WITH RESPECT TO
++ * THE SOFTWARE.  BROADCOM SPECIFICALLY DISCLAIMS ANY AND ALL IMPLIED WARRANTIES
++ * OF TITLE, MERCHANTABILITY, NONINFRINGEMENT, FITNESS FOR A PARTICULAR PURPOSE,
++ * LACK OF VIRUSES, ACCURACY OR COMPLETENESS, QUIET ENJOYMENT, QUIET POSSESSION
++ * OR CORRESPONDENCE TO DESCRIPTION. YOU ASSUME THE ENTIRE RISK ARISING OUT OF
++ * USE OR PERFORMANCE OF THE SOFTWARE.
++ *
++ * 3.     TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL BROADCOM OR ITS
++ * LICENSORS BE LIABLE FOR (i) CONSEQUENTIAL, INCIDENTAL, SPECIAL, INDIRECT, OR
++ * EXEMPLARY DAMAGES WHATSOEVER ARISING OUT OF OR IN ANY WAY RELATING TO YOUR
++ * USE OF OR INABILITY TO USE THE SOFTWARE EVEN IF BROADCOM HAS BEEN ADVISED OF
++ * THE POSSIBILITY OF SUCH DAMAGES; OR (ii) ANY AMOUNT IN EXCESS OF THE AMOUNT
++ * ACTUALLY PAID FOR THE SOFTWARE ITSELF OR U.S. $1, WHICHEVER IS GREATER. THESE
++ * LIMITATIONS SHALL APPLY NOTWITHSTANDING ANY FAILURE OF ESSENTIAL PURPOSE OF
++ * ANY LIMITED REMEDY.
++ *
++ * $brcm_Workfile: decode_client.c $
++ * $brcm_Revision: 29 $
++ * $brcm_Date: 7/18/12 3:46p $
++ *
++ * Module Description:
++ *
++ * Revision History:
++ *
++ * $brcm_Log: /nexus/examples/multiprocess/decode_client.c $
++ * 
++ *****************************************************************************/
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++#ifndef B_READCC_H__
++#define B_READCC_H__
++
++#include "nexus_types.h"
++#include "nexus_simple_video_decoder.h"
++#include "nexus_video_decoder_userdata.h"
++#include "nexus_video_types.h"
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++/* 
++local function which consumes and parses data from NEXUS_SimpleVideoDecoder_ReadUserDataBuffer.
++because there is no persistent storage, you must pass enough memory to read all entries, otherwise they are dropped.
++*/
++NEXUS_Error NEXUS_SimpleVideoDecoder_ReadClosedCaption(
++    NEXUS_SimpleVideoDecoderHandle videoDecoder, 
++    NEXUS_ClosedCaptionData *pClosedCaption, /* size is determined by totalEntries*sizeof(NEXUS_ClosedCaption) */
++    unsigned totalEntries,
++    unsigned *pNumRead /* returns number of entries read. */
++    );
++
++NEXUS_Error NEXUS_SimpleVideoDecoder_SetUserDataFormatFilter(NEXUS_SimpleVideoDecoderHandle videoDecoder,
++    NEXUS_UserDataFormat format);
++
++
++NEXUS_Error NEXUS_SimpleVideoDecoder_SetCCVideoCodec(NEXUS_SimpleVideoDecoderHandle videoDecoder,
++    NEXUS_VideoCodec codec);
++
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif
++#endif //COMCAST_RDK_SPECIFIC_CHANGE 
+diff -auNrd a/nexus/examples/multiprocess/Makefile b/nexus/examples/multiprocess/Makefile
+--- a/nexus/examples/multiprocess/Makefile	2019-09-24 17:35:26.000000000 -0400
++++ b/nexus/examples/multiprocess/Makefile	2019-09-26 15:52:33.197659260 -0400
+@@ -96,18 +96,52 @@
+ .PHONY: client server
+ 
+ include ../Makefile.inc
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++CFLAGS += $(NEXUS_CFLAGS) $(addprefix -I,$(NEXUS_APP_INCLUDE_PATHS)) $(addprefix -D,$(NEXUS_APP_DEFINES))
+ 
++# Always build with debug
++CFLAGS += -g
++endif
+ # media probe
+ BSEAV = $(NEXUS_TOP)/../BSEAV
+ include $(BSEAV)/lib/utils/batom.inc
+ include $(BSEAV)/lib/media/bmedia.inc
+ CFLAGS += $(addprefix -I,$(BMEDIA_INCLUDES))
+ CFLAGS += $(addprefix -D,$(BMEDIA_PROBE_DEFINES))
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++EXTRA_OBJS += \
++    $(NEXUS_TOP)/../magnum/commonutils/udp/src/budp_dccparse.o \
++    $(NEXUS_TOP)/../magnum/commonutils/udp/src/budp_bitread.o \
++    b_readcc.o
+ 
++LIBBCC = libbcc.so
++BCMCCSRCS = b_readcc.c $(NEXUS_TOP)/../magnum/commonutils/udp/src/budp_dccparse.c $(NEXUS_TOP)/../magnum/commonutils/udp/src/budp_bitread.c
++BCC_OBJS = $(BCMCCSRCS:%.c=%.o) 
++endif
+ server: $(addprefix $(BINDIR)/,$(SERVER_APPS))
+ 
+ client: $(addprefix $(BINDIR)/,$(CLIENT_APPS))
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++CFLAGS += \
++    -I$(NEXUS_TOP)/../magnum/commonutils/udp/include \
++    -I$(NEXUS_TOP)/../magnum/commonutils/avc/include \
++    -I$(NEXUS_TOP)/../magnum/commonutils/sur/include \
++    -I$(NEXUS_TOP)/../magnum/basemodules/mem \
++    -I$(NEXUS_TOP)/../magnum/commonutils/pxl \
++    -I$(NEXUS_TOP)/../magnum/commonutils/fmt/include
+ 
++CFLAGS += -I$(NEXUS_TOP)/lib/os/include -I$(NEXUS_TOP)/lib/os/include/linuxuser
++
++bcclib: $(BCC_OBJS)
++	$(CC) -shared -o libbcc.so  $(BCC_OBJS) $(CFLAGS) 
++	cp -f $(LIBBCC) ${NEXUS_BIN_DIR}
++%.o: %.c
++	@echo '$(CC) $<'
++	$(CC) $(CFLAGS) -fPIC -c $^ -o $@
++endif
+ # use make's static pattern rules to give clients special LDFLAGS
+ vpath %.c $(NEXUS_TOP)/nxclient/apps/utils $(NEXUS_TOP)/utils
+ 
+diff -auNrd a/nexus/lib/bip/include/bip_media_info.h b/nexus/lib/bip/include/bip_media_info.h
+--- a/nexus/lib/bip/include/bip_media_info.h	2019-09-24 17:35:26.000000000 -0400
++++ b/nexus/lib/bip/include/bip_media_info.h	2019-09-26 15:52:33.197659260 -0400
+@@ -45,6 +45,9 @@
+ 
+ #include "bip.h"
+ #include "bfile_io.h"
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++#include "nexus_core_utils.h"
++#endif
+ 
+ /** @addtogroup bip_media_info
+ 
+diff -auNrd a/nexus/lib/dtcp_ip/dtcp_ip_lib.inc b/nexus/lib/dtcp_ip/dtcp_ip_lib.inc
+--- a/nexus/lib/dtcp_ip/dtcp_ip_lib.inc	2019-09-24 17:35:26.000000000 -0400
++++ b/nexus/lib/dtcp_ip/dtcp_ip_lib.inc	2019-09-26 15:52:33.197659260 -0400
+@@ -192,11 +192,22 @@
+ endif
+ endif
+ 
++#COMCAST_RDK_SPECIFIC_CHANGE deleted moved down in ifneq
++ifeq (1,0)
+ include  $(B_LIB_TOP)/../../BSEAV/lib/security/common_drm/common_drm.inc
+ B_DTCP_IP_LIB_PUBLIC_INCLUDES += ${COMMON_DRM_INCLUDES}
+-
++endif
+ ifneq (${B_DTCP_IP_BUILD_MODE},stubs)
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++    include  $(B_LIB_TOP)/../../BSEAV/lib/security/common_drm/common_drm.inc
++    B_DTCP_IP_LIB_PUBLIC_INCLUDES += ${COMMON_DRM_INCLUDES}
++endif
+     B_DTCP_IP_LIB_LDFLAGS += ${COMMON_DRM_LDFLAGS}
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,0)//lcmndrm64 is used for 64bit case
++    B_DTCP_IP_LIB_LDFLAGS += -L$(B_LIB_TOP)/../../BSEAV/lib/security/common_drm/lib/$(CMNDRM_DIR)/ -lcmndrm -L$(B_LIB_TOP)/../../BSEAV/lib/drmrootfs/${DRMROOTFS_LIBDIR} -ldrmrootfs
++endif
+ 
+ # Link with common_drm libraries
+ B_DTCP_IP_LIB_LDFLAGS += $(COMMON_DRM_LIB_LDFLAGS)
+diff -auNrd a/nexus/modules/cec/src/nexus_cec.c b/nexus/modules/cec/src/nexus_cec.c
+--- a/nexus/modules/cec/src/nexus_cec.c	2019-09-26 15:24:38.000000000 -0400
++++ b/nexus/modules/cec/src/nexus_cec.c	2019-09-26 15:52:33.197659260 -0400
+@@ -577,7 +577,25 @@
+     return NEXUS_SUCCESS;
+ }
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++static const uint8_t g_logicalAddrArrayRec[] =
++{
++	BAVC_HDMI_CEC_RecDevices_eRecDevice1,
++	BAVC_HDMI_CEC_RecDevices_eRecDevice2,
++	BAVC_HDMI_CEC_RecDevices_eRecDevice3,	
++	BAVC_HDMI_CEC_RecDevices_eFreeUse
++};
++static const uint8_t g_logicalAddrArrayDvd[] =
++{
++	BAVC_HDMI_CEC_DvdDevices_eDVD1,
++	BAVC_HDMI_CEC_DvdDevices_eDVD2,
++	BAVC_HDMI_CEC_DvdDevices_eDVD3,
++	BAVC_HDMI_CEC_DvdDevices_eFREE_USE
++};
++static const uint8_t g_logicalAddrArraySTB[] =
++#else
+ static const uint8_t g_logicalAddrArray[] =
++#endif
+ {
+ 	BAVC_HDMI_CEC_StbDevices_eSTB1,
+ 	BAVC_HDMI_CEC_StbDevices_eSTB2,
+@@ -591,10 +609,35 @@
+ 	NEXUS_Error rc;
+ 	uint8_t addr, lastIndex;
+ 	BCEC_Settings stCecSettings;
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++        const uint8_t *g_logicalAddrArray;
++	uint8_t unregistered_addr;
++#endif
+ 
+ 	BDBG_OBJECT_ASSERT(handle, NEXUS_Cec);
+ 
+ 	lastIndex = sizeof(g_logicalAddrArray)/sizeof(g_logicalAddrArray[0]) - 1;
++
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++	if(handle->status.deviceType == NEXUS_CecDeviceType_eRecordingDevice)
++	{
++		g_logicalAddrArray = g_logicalAddrArrayRec;
++		lastIndex = sizeof(g_logicalAddrArrayRec)/sizeof(g_logicalAddrArrayRec[0]) - 1;
++		unregistered_addr = BAVC_HDMI_CEC_RecDevices_eUnRegistered;
++	}
++	else if(handle->status.deviceType == NEXUS_CecDeviceType_ePlaybackDevice)
++	{
++		g_logicalAddrArray = g_logicalAddrArrayDvd;
++		lastIndex = sizeof(g_logicalAddrArrayDvd)/sizeof(g_logicalAddrArrayDvd[0]) - 1;
++		unregistered_addr = BAVC_HDMI_CEC_DvdDevices_eUNREISTERED;
++	}
++	else
++	{
++		g_logicalAddrArray = g_logicalAddrArraySTB;
++		lastIndex = sizeof(g_logicalAddrArraySTB)/sizeof(g_logicalAddrArraySTB[0]) - 1;
++		unregistered_addr = BAVC_HDMI_CEC_StbDevices_eUnRegistered;
++	}
++#endif	
+ 	switch (handle->searchState)
+ 	{
+ 
+@@ -633,7 +676,11 @@
+ 
+ 			BCEC_GetSettings(handle->cecHandle, &stCecSettings);
+ 				stCecSettings.enable = true;
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++				stCecSettings.CecLogicalAddr = unregistered_addr;
++#else
+ 				stCecSettings.CecLogicalAddr = BAVC_HDMI_CEC_StbDevices_eUnRegistered;
++#endif
+ 				BKNI_Memcpy(stCecSettings.CecPhysicalAddr, handle->status.physicalAddress,
+ 					sizeof(handle->status.physicalAddress));
+ 				stCecSettings.eDeviceType = handle->status.deviceType;
+diff -auNrd a/nexus/modules/core/include/nexus_memory.h b/nexus/modules/core/include/nexus_memory.h
+--- a/nexus/modules/core/include/nexus_memory.h	2019-09-24 17:35:26.000000000 -0400
++++ b/nexus/modules/core/include/nexus_memory.h	2019-09-26 15:52:33.201659559 -0400
+@@ -356,7 +356,12 @@
+     NEXUS_HeapLookupType_eMain,
+     NEXUS_HeapLookupType_eCompressedRegion, /* With Sage, this is the compresed restricted region (CRR) */
+     NEXUS_HeapLookupType_eExportRegion, /* With Sage, this is the export restricted region (XRR) */
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    NEXUS_HeapLookupType_e3Party,
+     NEXUS_HeapLookupType_eMax
++#else
++    /*NEXUS_HeapLookupType_eMax commented out for compilation */
++#endif
+ } NEXUS_HeapLookupType;
+ 
+ /**
+diff -auNrd a/nexus/modules/core/include/nexus_types.h b/nexus/modules/core/include/nexus_types.h
+--- a/nexus/modules/core/include/nexus_types.h	2019-09-24 17:35:26.000000000 -0400
++++ b/nexus/modules/core/include/nexus_types.h	2019-09-26 15:52:33.201659559 -0400
+@@ -689,6 +689,9 @@
+ #define NEXUS_HEAP_TYPE_DTU                          0x00200
+ #define NEXUS_HEAP_TYPE_CRRT                         0x00400
+ #define NEXUS_HEAP_TYPE_ARR                          0x00800
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++#define NEXUS_HEAP_TYPE_3PARTY_DRIVER                0x40000
++#endif
+ 
+ 
+ /***************************************************************************
+diff -auNrd a/nexus/modules/core/src/nexus_core.c b/nexus/modules/core/src/nexus_core.c
+--- a/nexus/modules/core/src/nexus_core.c	2019-09-24 17:38:41.000000000 -0400
++++ b/nexus/modules/core/src/nexus_core.c	2019-09-26 15:52:33.201659559 -0400
+@@ -51,6 +51,10 @@
+ #include "priv/nexus_sage_svp_priv.h"
+ #endif
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++extern unsigned NEXUS_Platform_P_ReadBoxMode(void);
++#endif
++
+ BDBG_MODULE(nexus_core);
+ BTRC_MODULE(500ms_tick, ENABLE);
+ 
+@@ -132,10 +136,35 @@
+ 
+ static void NEXUS_CoreModule_P_Print(void)
+ {
+-#if BDBG_DEBUG_BUILD
++#if BDBG_DEBUG_BUILD || B_REFSW_DEBUG_FORCE_ENABLE_BDBG || COMCAST_RDK_SPECIFIC_CHANGE
+     BDBG_LOG(("Core:"));
+     NEXUS_Memory_PrintHeaps();
+     NEXUS_MemoryBlock_P_Print();
++
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    {
++        BCHP_AvsData data;
++
++        BDBG_LOG(("Boxmode: %d", NEXUS_Platform_P_ReadBoxMode()));
++        /* Initialize with magic string, to get the predicted voltage and voltage together */
++        data.voltage = 0xFACEFADE;
++
++        if (BCHP_GetAvsData_isrsafe(g_NexusCore.publicHandles.chp, &data) == NEXUS_SUCCESS) {
++            signed integer=data.temperature/1000;
++            unsigned predicted_voltage;
++
++            predicted_voltage = (data.voltage >> 16);
++            data.voltage = (data.voltage & 0x0000FFFF);
++            BDBG_LOG(("Temperature:%d.%dc\n", integer, data.temperature - integer*1000));
++            BDBG_LOG(("Voltage:%d\n", data.voltage));
++            if(predicted_voltage)
++                BDBG_LOG(("Predicted Voltage:%d\n", predicted_voltage));
++        }
++        else
++            BDBG_LOG(("Temperature: Unable to read\n"));
++    }
++#endif
++
+     return;
+ #endif
+ }
+diff -auNrd a/nexus/modules/core/src/nexus_core_convert_local.c b/nexus/modules/core/src/nexus_core_convert_local.c
+--- a/nexus/modules/core/src/nexus_core_convert_local.c	2019-09-24 17:35:26.000000000 -0400
++++ b/nexus/modules/core/src/nexus_core_convert_local.c	2019-09-26 15:52:33.201659559 -0400
+@@ -302,6 +302,11 @@
+     else if (heapType & NEXUS_HEAP_TYPE_MAIN) {
+         n+= BKNI_Snprintf(buf, buf_size, "MAIN");
+     }
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    else if (heapType & NEXUS_HEAP_TYPE_3PARTY_DRIVER) {
++        n+= BKNI_Snprintf(buf, buf_size, "3PARTY");
++    }
++#endif
+     else if (heapType & NEXUS_HEAP_TYPE_SAGE_RESTRICTED_REGION) {
+         n+= BKNI_Snprintf(buf, buf_size, "SAGE");
+     }
+diff -auNrd a/nexus/modules/core/src/nexus_memory.c b/nexus/modules/core/src/nexus_memory.c
+--- a/nexus/modules/core/src/nexus_memory.c	2019-09-24 17:35:26.000000000 -0400
++++ b/nexus/modules/core/src/nexus_memory.c	2019-09-26 15:52:33.201659559 -0400
+@@ -1700,6 +1700,9 @@
+     unsigned i, heapType;
+     switch (lookupType) {
+     case NEXUS_HeapLookupType_eMain: heapType = NEXUS_HEAP_TYPE_MAIN; break;
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    case NEXUS_HeapLookupType_e3Party: heapType = NEXUS_HEAP_TYPE_3PARTY_DRIVER; break;
++#endif
+     case NEXUS_HeapLookupType_eCompressedRegion: heapType = NEXUS_HEAP_TYPE_COMPRESSED_RESTRICTED_REGION; break;
+     case NEXUS_HeapLookupType_eExportRegion: heapType = NEXUS_HEAP_TYPE_EXPORT_REGION; break;
+     default: return NULL;
+diff -auNrd a/nexus/modules/frontend/common/src/nexus_frontend_qam.c b/nexus/modules/frontend/common/src/nexus_frontend_qam.c
+--- a/nexus/modules/frontend/common/src/nexus_frontend_qam.c	2019-09-24 17:35:26.000000000 -0400
++++ b/nexus/modules/frontend/common/src/nexus_frontend_qam.c	2019-09-26 15:52:33.201659559 -0400
+@@ -60,7 +60,16 @@
+     BKNI_Memset(pSettings, 0, sizeof(*pSettings));
+     pSettings->mode = NEXUS_FrontendQamMode_e64;
+     pSettings->annex = NEXUS_FrontendQamAnnex_eB;
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++	/* In 13.2 release, default symbolrate was not set, which keeps at 0 and lower level code 
++         * used to map it to correct symbol rate based on qam mode. qamtuner plugin doesn't change symbolrate based on
++         * this assumption. 
++         * 14.4 sets the default symbol rate for Qam 64. To make things compatible to 13.2 and not to
++         * change gst-plugin, keep default symbol rate to 0
++	 */
++#else
+     pSettings->symbolRate = 5056900;
++#endif
+     pSettings->bandwidth = NEXUS_FrontendQamBandwidth_e6Mhz;
+     pSettings->spectrumMode = NEXUS_FrontendQamSpectrumMode_eAuto;
+     pSettings->frequencyOffset = NEXUS_FrontendQamFrequencyOffset_e180Khz;
+diff -auNrd a/nexus/modules/ir_input/src/nexus_ir_input.c b/nexus/modules/ir_input/src/nexus_ir_input.c
+--- a/nexus/modules/ir_input/src/nexus_ir_input.c	2019-09-24 17:35:26.000000000 -0400
++++ b/nexus/modules/ir_input/src/nexus_ir_input.c	2019-09-26 15:52:33.201659559 -0400
+@@ -61,6 +61,9 @@
+     uint32_t lastcode;
+     NEXUS_Time lasttime;
+     bool lasttime_set;
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1	
++    bool is_validxmpkey;
++#endif
+     /* data queued at isr time */
+     NEXUS_IrInputEvent *queue;
+     unsigned rptr, wptr;
+@@ -272,6 +275,27 @@
+ 
+         BDBG_OBJECT_ASSERT(irInput, NEXUS_IrInput);
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++        if ( NEXUS_IrInputMode_eCirXmp == irInput->settings.mode)
++        {
++            if ((event.code&0x0000ffff) == 0x43fe){
++                 BDBG_WRN((" It is a XMP2 remote!!!!!!!!!!!!!!!!!!!!!\n"));
++            }
++            if ((event.code&0x0000ffff) == 0x443e){
++                 BDBG_MSG(("got XMP1 registration code!"));
++                 irInput->is_validxmpkey = true;
++                 return 0;
++            }
++            if (irInput->is_validxmpkey == false)
++            {
++                 BDBG_WRN((" discard xmp1 key %x",  event.code));
++                 return 0;
++            }
++            event.code = (event.code&0xffff)>>8;
++            irInput->is_validxmpkey = false;
++        }
++#endif
++
+         NEXUS_Time_Get_isrsafe(&time);
+         if (irInput->lasttime_set) {
+             time_diff = NEXUS_Time_Diff_isrsafe(&time, &irInput->lasttime);
+diff -auNrd a/nexus/modules/led/include/nexus_led.h b/nexus/modules/led/include/nexus_led.h
+--- a/nexus/modules/led/include/nexus_led.h	2019-09-24 17:35:26.000000000 -0400
++++ b/nexus/modules/led/include/nexus_led.h	2019-09-26 15:52:33.201659559 -0400
+@@ -260,7 +260,19 @@
+     NEXUS_LedHandle led
+     );
+ 
+-
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++/***************************************************************************
++Summary:
++Set the brightness of a discrete LED.
++****************************************************************************/
++NEXUS_Error NEXUS_Led_SetIndicatorBrightness(
++      NEXUS_LedHandle led,
++      unsigned indNumber,              /* Indicator number: 0-3 = PWR bar, 4 = Mood lighting */
++      uint8_t percentRed, 
++      uint8_t percentGreen, 
++      uint8_t percentBlue
++      );
++#endif
+ #ifdef __cplusplus
+ }
+ #endif
+diff -auNrd a/nexus/modules/led/src/nexus_led.c b/nexus/modules/led/src/nexus_led.c
+--- a/nexus/modules/led/src/nexus_led.c	2019-09-24 17:35:26.000000000 -0400
++++ b/nexus/modules/led/src/nexus_led.c	2019-09-26 15:52:33.201659559 -0400
+@@ -523,3 +523,9 @@
+ #endif    
+     return ;
+ }
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++NEXUS_Error NEXUS_Led_SetIndicatorBrightness(NEXUS_LedHandle led, unsigned indNumber, uint8_t percentRed, uint8_t percentGreen, uint8_t percentBlue)
++{
++    return NEXUS_SUCCESS;
++}
++#endif
+diff -auNrd a/nexus/modules/simple_decoder/src/nexus_simple_stc_channel.c b/nexus/modules/simple_decoder/src/nexus_simple_stc_channel.c
+--- a/nexus/modules/simple_decoder/src/nexus_simple_stc_channel.c	2019-09-24 17:35:26.000000000 -0400
++++ b/nexus/modules/simple_decoder/src/nexus_simple_stc_channel.c	2019-09-26 15:52:33.201659559 -0400
+@@ -288,7 +288,14 @@
+     /* enabled by default */
+     handle->sync.enabled = true;
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    NEXUS_SyncChannelSettings syncChanSettings;
++    NEXUS_SyncChannel_GetDefaultSettings(&syncChanSettings);
++    syncChanSettings.enablePrecisionLipsync = false;
++    handle->sync.handle = NEXUS_SyncChannel_Create(&syncChanSettings);
++#else
+     handle->sync.handle = NEXUS_SyncChannel_Create(NULL);
++#endif    
+     if (!handle->sync.handle)
+     {
+         BDBG_WRN(("Could not create SyncChannel instance. SyncChannel is disabled for stc channel %p", (void *)handle));
+diff -auNrd a/nexus/modules/transport/include/nexus_playpump.h b/nexus/modules/transport/include/nexus_playpump.h
+--- a/nexus/modules/transport/include/nexus_playpump.h	2019-09-24 17:35:26.000000000 -0400
++++ b/nexus/modules/transport/include/nexus_playpump.h	2019-09-26 15:52:33.201659559 -0400
+@@ -104,6 +104,15 @@
+     NEXUS_PlaypumpOpenSettings *pSettings /* [out] */
+     );
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++/**
++Summary:
++Retrieve handle of existing playpump (returns NULL otherwise).
++**/
++
++NEXUS_PlaypumpHandle
++NEXUS_Playpump_RetrieveHandle(unsigned index);
++#endif
+ /**
+ Summary:
+ Open a new Playpump interface.
+diff -auNrd a/nexus/modules/transport/include/priv/nexus_stc_channel_priv.h b/nexus/modules/transport/include/priv/nexus_stc_channel_priv.h
+--- a/nexus/modules/transport/include/priv/nexus_stc_channel_priv.h	2019-09-24 17:35:26.000000000 -0400
++++ b/nexus/modules/transport/include/priv/nexus_stc_channel_priv.h	2019-09-26 15:52:33.201659559 -0400
+@@ -87,6 +87,14 @@
+     NEXUS_StcChannelDecoderType_eMax
+ } NEXUS_StcChannelDecoderType;
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++typedef struct
++{
++    bool marked;
++    uint32_t offset;
++} NEXUS_StcChannelPcrDisco;
++#endif
++
+ typedef struct NEXUS_StcChannelDecoderConnection * NEXUS_StcChannelDecoderConnectionHandle;
+ 
+ typedef struct NEXUS_StcChannelDecoderConnectionStatus
+@@ -106,6 +114,9 @@
+ typedef BERR_Code (*NEXUS_StcChannel_GetPtsCallback)(void *pContext, BAVC_PTSInfo *pPTSInfo);
+ typedef BERR_Code (*NEXUS_StcChannel_GetCdbLevelCallback)(void *pContext, unsigned *pCdbLevel);
+ typedef BERR_Code (*NEXUS_StcChannel_StcValidCallback)(void *pContext);
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++typedef BERR_Code (*NEXUS_StcChannel_PcrDiscoCallback)(void *pContext, const NEXUS_StcChannelPcrDisco * pDisco);
++#endif
+ typedef BERR_Code (*NEXUS_StcChannel_SetPcrOffset)(void *pContext, uint32_t pcrOffset);
+ typedef BERR_Code (*NEXUS_StcChannel_GetPcrOffset)(void *pContext, uint32_t *pPcrOffset);
+ 
+@@ -118,6 +129,9 @@
+     NEXUS_StcChannel_StcValidCallback     stcValid_isr;       /* The STC has been marked valid. Required if decoder invalidates the STC during playback mode. */
+     NEXUS_StcChannel_SetPcrOffset         setPcrOffset_isr;   /* Optional. If set, then don't set the Serial STC but call this function with the needed PCR_OFFSET. */
+     NEXUS_StcChannel_GetPcrOffset         getPcrOffset_isr;   /* Optional. If set, then call this function to get the offset to add w/ the Serial STC. */
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    NEXUS_StcChannel_PcrDiscoCallback     pcrDisco_isr;
++#endif
+     void                                 *pCallbackContext;        /* Context for all callbacks. */
+     BKNI_EventHandle                      statusUpdateEvent;  /* Required. Allows STC channel to notify decoders of updates in status */
+     bool                                  lowLatencyEnabled;  /* Optional. Can only apply to one decoder */
+diff -auNrd a/nexus/modules/transport/src/nexus_playpump.c b/nexus/modules/transport/src/nexus_playpump.c
+--- a/nexus/modules/transport/src/nexus_playpump.c	2019-09-24 17:35:26.000000000 -0400
++++ b/nexus/modules/transport/src/nexus_playpump.c	2019-09-26 15:52:33.201659559 -0400
+@@ -140,6 +140,36 @@
+     return;
+ }
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++NEXUS_PlaypumpHandle
++NEXUS_Playpump_RetrieveHandle(unsigned index)
++{
++#if (PLATFORM != 97425)
++    BDBG_ERR(("NEXUS_Playpump_RetrieveHandle not implemented for this platform!"));
++    return NULL;
++#endif
++
++#if NEXUS_NUM_PLAYPUMPS
++    NEXUS_PlaypumpHandle p;
++    BXPT_Playback_ChannelSettings play_cfg;
++    BERR_Code rc;
++    BPVRlib_Feed_Settings feed_cfg;
++    NEXUS_PlaypumpOpenSettings defaultSettings;
++    NEXUS_HeapHandle heap;
++
++    if (index >= NEXUS_NUM_PLAYPUMPS) {
++        rc = BERR_TRACE(BERR_INVALID_PARAMETER);
++        BDBG_ERR(("playpump[%d] not available", index));
++        return NULL;
++    }
++
++    /* could be NULL, users responsibility to test for it */
++    return pTransport->playpump[index].playpump;
++#else
++    return NULL;
++#endif
++}
++#endif
+ #if NEXUS_NUM_PLAYPUMPS
+ #define PLAYBACK_HAS_MEMORY(i) (pTransport->settings.clientEnabled.playback[i].rave)
+ #endif
+diff -auNrd a/nexus/modules/transport/src/nexus_transport_module.h b/nexus/modules/transport/src/nexus_transport_module.h
+--- a/nexus/modules/transport/src/nexus_transport_module.h	2019-09-24 17:35:26.000000000 -0400
++++ b/nexus/modules/transport/src/nexus_transport_module.h	2019-09-26 15:52:33.201659559 -0400
+@@ -496,6 +496,10 @@
+     bool lastCounterValueValid;
+     uint64_t lastCounterValue;
+     NEXUS_StcChannelSnapshotList snapshots;
++    #if COMCAST_RDK_SPECIFIC_CHANGE || 1
++        BINT_CallbackHandle markedDiscoCallback;
++        BINT_CallbackHandle unmarkedDiscoCallback;
++    #endif
+     NEXUS_StcChannelPidChannelList pids;
+ };
+ 
+diff -auNrd a/nexus/modules/video_decoder/src/nexus_video_decoder.c b/nexus/modules/video_decoder/src/nexus_video_decoder.c
+--- a/nexus/modules/video_decoder/src/nexus_video_decoder.c	2019-09-24 17:35:27.000000000 -0400
++++ b/nexus/modules/video_decoder/src/nexus_video_decoder.c	2019-09-26 15:52:33.201659559 -0400
+@@ -1654,6 +1654,83 @@
+     }
+ }
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++static void NEXUS_VideoDecoder_P_SyncXptPcrDiscosToXdmPcrDiscos_isr(
++    NEXUS_VideoDecoderHandle videoDecoder,
++    const BXVD_PPBParameterInfo * pstPPBParameterInfo)
++{
++    unsigned i;
++    unsigned j;
++
++    /* search the xpt pcr disco queue for one that matches a valid pcr offset in XDM */
++    for (i = 0; i < videoDecoder->stc.pcrDisco.count; i++)
++    {
++        if (pstPPBParameterInfo->stPCROffset.bValid
++            && pstPPBParameterInfo->stPCROffset.uiValue == videoDecoder->stc.pcrDisco.q[(videoDecoder->stc.pcrDisco.read + i)%NEXUS_VIDEO_DECODER_P_MAX_PCR_DISCO_COUNT].offset)
++        {
++            break;
++        }
++    }
++
++    /* if we've found a matching offset */
++    if (i != videoDecoder->stc.pcrDisco.count)
++    {
++        for (j = 0; j <= i; j++)
++        {
++            if (i == j)
++            {
++                BDBG_WRN(("%s disco %#x encountered",
++                    videoDecoder->stc.pcrDisco.q[videoDecoder->stc.pcrDisco.read].marked ? "marked" : "unmarked",
++                    videoDecoder->stc.pcrDisco.q[videoDecoder->stc.pcrDisco.read].offset));
++          /*      if (videoDecoder->stc.pcrDisco.q[videoDecoder->stc.pcrDisco.read].marked) */
++                {
++                    /* just after a marked disco, we need to ensure that we don't display frames with invalid PTS */
++                    videoDecoder->stc.pcrDisco.dropUntilValidPts = true;
++                }
++         /*       else  */
++                {
++                    /* DM will do its own thing during unmarked discos */
++/*                    videoDecoder->stc.pcrDisco.dropUntilValidPts = false; */
++                }
++            }
++            else
++            {
++                BDBG_WRN(("%s disco %#x skipped",
++                    videoDecoder->stc.pcrDisco.q[videoDecoder->stc.pcrDisco.read].marked ? "marked" : "unmarked",
++                    videoDecoder->stc.pcrDisco.q[videoDecoder->stc.pcrDisco.read].offset));
++            }
++            videoDecoder->stc.pcrDisco.read++;
++            videoDecoder->stc.pcrDisco.read %= NEXUS_VIDEO_DECODER_P_MAX_PCR_DISCO_COUNT;
++            videoDecoder->stc.pcrDisco.count--;
++            BDBG_WRN(("disco queue %u", videoDecoder->stc.pcrDisco.count));
++        }
++    }
++}
++
++static void NEXUS_VideoDecoder_P_HandlePcrDisco_isr(
++    NEXUS_VideoDecoderHandle videoDecoder,
++    const BXVD_PPBParameterInfo * pstPPBParameterInfo,
++    BXVD_TSMInfo * pTSMInfo)
++{
++    NEXUS_VideoDecoder_P_SyncXptPcrDiscosToXdmPcrDiscos_isr(videoDecoder, pstPPBParameterInfo);
++
++    if (videoDecoder->stc.pcrDisco.dropUntilValidPts)
++    {
++        if (pstPPBParameterInfo->stPTS.bValid)
++        {
++            /* once we see a valid PTS after a marked PCR disco, reset the drop state */
++            BDBG_WRN(("valid PTS after marked disco"));
++            videoDecoder->stc.pcrDisco.dropUntilValidPts = false;
++        }
++        else
++        {
++            /* otherwise, drop every frame with no PTS after a disco */
++            BDBG_WRN(("invalid PTS after marked disco, drop %#x", pstPPBParameterInfo->uiSerialNumber));
++            pTSMInfo->ePictureHandlingMode = BXVD_PictureHandlingMode_eDrop;
++        }
++    }
++}
++#endif
+ static void NEXUS_VideoDecoder_P_TsmResult_isr( void *pParm1, int iParm2, void *pData )
+ {
+     BERR_Code rc;
+@@ -1675,6 +1752,18 @@
+     }
+ #endif
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    /* Get the parameters of the next picture on the delivery queue. */
++    rc = BXVD_GetPPBParameterQueueInfo_isr(videoDecoder->dec, &pstPPBParameterInfo, 1, &n);
++    if (rc || !n) {
++        return;
++    }
++
++    /* if marked disco(s) have occurred, try to handle them */
++    /* for unmarked disco(s), DM will deal with them naturally */
++    NEXUS_VideoDecoder_P_HandlePcrDisco_isr(videoDecoder, pstPPBParameterInfo, pTSMInfo);
++
++#endif
+     if (videoDecoder->extendedSettings.lowLatencySettings.mode != NEXUS_VideoDecoderLowLatencyMode_eOff)
+     {
+         NEXUS_VideoDecoder_P_DoLowLatency_isr(videoDecoder, pTSMInfo);
+@@ -1685,11 +1774,13 @@
+         return;
+     }
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE && 0
+     /* Get the parameters of the next picture on the delivery queue. */
+     rc = BXVD_GetPPBParameterQueueInfo_isr(videoDecoder->dec, &pstPPBParameterInfo, 1, &n);
+     if (rc || !n) {
+         return;
+     }
++#endif
+ 
+     /* If the same picture is sitting at the head of the queue, bump the display count.
+     * Note: this is not the picture being displayed, but the easiest way to detect that a picture is being repeated.
+@@ -3544,6 +3635,9 @@
+     stcChannelConnectionSettings.getPts_isr = NEXUS_VideoDecoder_P_GetPtsCallback_isr;
+     stcChannelConnectionSettings.getCdbLevel_isr = NEXUS_VideoDecoder_P_GetCdbLevelCallback_isr;
+     stcChannelConnectionSettings.stcValid_isr = NEXUS_VideoDecoder_P_StcValidCallback_isr;
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    stcChannelConnectionSettings.pcrDisco_isr = NEXUS_VideoDecoder_P_StcPcrDiscoCallback_isr;
++#endif
+     if (videoDecoder->mosaicMode || videoDecoder->startSettings.nonRealTime) {
+         stcChannelConnectionSettings.setPcrOffset_isr = NEXUS_VideoDecoder_P_SetPcrOffset_isr;
+         stcChannelConnectionSettings.getPcrOffset_isr = NEXUS_VideoDecoder_P_GetPcrOffset_isr;
+diff -auNrd a/nexus/modules/video_decoder/src/nexus_video_decoder_module.h b/nexus/modules/video_decoder/src/nexus_video_decoder_module.h
+--- a/nexus/modules/video_decoder/src/nexus_video_decoder_module.h	2019-09-24 17:35:27.000000000 -0400
++++ b/nexus/modules/video_decoder/src/nexus_video_decoder_module.h	2019-09-26 15:52:33.201659559 -0400
+@@ -178,6 +178,10 @@
+     BXDM_PictureProvider_Handle pictureProvider;
+ } NEXUS_VideoDecoder_P_Xdm;
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++#define NEXUS_VIDEO_DECODER_P_MAX_PCR_DISCO_COUNT 20
++#endif
++
+ #define NEXUS_P_MAX_ELEMENTS_IN_VIDEO_DECODER_PIC_QUEUE 64
+ 
+ typedef enum NEXUS_VideoDecoderPictureDisplay
+@@ -499,6 +503,16 @@
+ 
+     struct
+     {
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++        struct
++        {
++            bool dropUntilValidPts;
++            unsigned count;
++            unsigned read;
++            unsigned write;
++            NEXUS_StcChannelPcrDisco q[NEXUS_VIDEO_DECODER_P_MAX_PCR_DISCO_COUNT];
++        } pcrDisco;
++#endif
+         NEXUS_StcChannelDecoderConnectionHandle connector;
+         unsigned priority;
+         BKNI_EventHandle statusChangeEvent;
+@@ -594,6 +608,9 @@
+ BERR_Code NEXUS_VideoDecoder_P_GetCdbLevelCallback_isr(void *pContext, unsigned *pCdbLevel);
+ BERR_Code NEXUS_VideoDecoder_P_GetPtsCallback_isr(void *pContext, BAVC_PTSInfo *pPTSInfo);
+ BERR_Code NEXUS_VideoDecoder_P_StcValidCallback_isr(void *pContext);
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++BERR_Code NEXUS_VideoDecoder_P_StcPcrDiscoCallback_isr(void *pContext, const NEXUS_StcChannelPcrDisco * pDisco);
++#endif
+ BERR_Code NEXUS_VideoDecoder_P_SetPcrOffset_isr(void *pContext, uint32_t pcrOffset);
+ BERR_Code NEXUS_VideoDecoder_P_GetPcrOffset_isr(void *pContext, uint32_t *pPcrOffset);
+ 
+diff -auNrd a/nexus/modules/video_decoder/src/nexus_video_decoder_priv.c b/nexus/modules/video_decoder/src/nexus_video_decoder_priv.c
+--- a/nexus/modules/video_decoder/src/nexus_video_decoder_priv.c	2019-09-24 17:35:27.000000000 -0400
++++ b/nexus/modules/video_decoder/src/nexus_video_decoder_priv.c	2019-09-26 15:52:33.205659858 -0400
+@@ -1104,6 +1104,36 @@
+     return 0;
+ }
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++BERR_Code NEXUS_VideoDecoder_P_StcPcrDiscoCallback_isr(void *pContext, const NEXUS_StcChannelPcrDisco * pDisco)
++{
++    NEXUS_VideoDecoderHandle videoDecoder = (NEXUS_VideoDecoderHandle)pContext;
++    BDBG_OBJECT_ASSERT(videoDecoder, NEXUS_VideoDecoder);
++
++    /* we don't care about discos before the first pts passes */
++    if (videoDecoder->firstPtsPassed)
++    {
++        /* add to queue */
++        if (videoDecoder->stc.pcrDisco.count == NEXUS_VIDEO_DECODER_P_MAX_PCR_DISCO_COUNT)
++        {
++            BDBG_WRN(("queue full -> discarded oldest disco %#x(%s)",
++                videoDecoder->stc.pcrDisco.q[videoDecoder->stc.pcrDisco.read].offset,
++                videoDecoder->stc.pcrDisco.q[videoDecoder->stc.pcrDisco.read].marked ? "marked" : "unmarked"));
++            videoDecoder->stc.pcrDisco.read++;
++            videoDecoder->stc.pcrDisco.read %= NEXUS_VIDEO_DECODER_P_MAX_PCR_DISCO_COUNT;
++            videoDecoder->stc.pcrDisco.count--;
++        }
++        videoDecoder->stc.pcrDisco.q[videoDecoder->stc.pcrDisco.write] = *pDisco;
++        videoDecoder->stc.pcrDisco.count++;
++        videoDecoder->stc.pcrDisco.write++;
++        videoDecoder->stc.pcrDisco.write %= NEXUS_VIDEO_DECODER_P_MAX_PCR_DISCO_COUNT;
++        BDBG_WRN(("%s disco %#x signaled -> enqueued(%u)",
++            pDisco->marked ? "marked" : "unmarked", pDisco->offset,
++            videoDecoder->stc.pcrDisco.count));
++    }
++    return BERR_SUCCESS;
++}
++#endif
+ BERR_Code NEXUS_VideoDecoder_P_StcValidCallback_isr(void *pContext)
+ {
+     NEXUS_VideoDecoderHandle videoDecoder = (NEXUS_VideoDecoderHandle)pContext;
+diff -auNrd a/nexus/nxclient/examples/hddvi.c b/nexus/nxclient/examples/hddvi.c
+--- a/nexus/nxclient/examples/hddvi.c	2019-09-24 17:35:27.000000000 -0400
++++ b/nexus/nxclient/examples/hddvi.c	2019-09-26 15:52:33.205659858 -0400
+@@ -39,7 +39,6 @@
+ #include <stdio.h>
+ #if NEXUS_HAS_SIMPLE_DECODER
+ #include "nexus_hddvi_input.h"
+-#include "nexus_simple_video_decoder.h"
+ 
+ #include <stdlib.h>
+ #include <string.h>
+@@ -59,7 +58,6 @@
+     int rc;
+     NEXUS_HdDviInputHandle hddvi;
+     NEXUS_HdDviInputSettings settings;
+-    NEXUS_SimpleVideoDecoderHandle videoDecoder;
+ 
+     BSTD_UNUSED(argc);
+     NxClient_GetDefaultJoinSettings(&joinSettings);
+@@ -72,18 +70,16 @@
+ 
+     NxClient_GetDefaultAllocSettings(&allocSettings);
+     allocSettings.surfaceClient = 1; /* surface client required for video window */
+-    allocSettings.simpleVideoDecoder = 1;
+     rc = NxClient_Alloc(&allocSettings, &allocResults);
+     BDBG_ASSERT(!rc);
+ 
+-    videoDecoder = NEXUS_SimpleVideoDecoder_Acquire(allocResults.simpleVideoDecoder[0].id);
+-
+     NxClient_GetDefaultConnectSettings(&connectSettings);
+-    connectSettings.simpleVideoDecoder[0].id = allocResults.simpleVideoDecoder[0].id;
+-    connectSettings.simpleVideoDecoder[0].surfaceClientId = allocResults.surfaceClient[0].id;
+-    connectSettings.simpleVideoDecoder[0].decoderCapabilities.maxWidth = 0; /* no decoder needed, just a window */
+-    connectSettings.simpleVideoDecoder[0].decoderCapabilities.maxHeight = 0;
+-    connectSettings.simpleAudioDecoder.id = allocResults.simpleAudioDecoder.id;
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    printf("no change in hdmiInput.id\n");
++#else
++    connectSettings.hdmiInput.id = 1;
++    connectSettings.hdmiInput.hdDvi = true;
++#endif
+     rc = NxClient_Connect(&connectSettings, &connectId);
+     BDBG_ASSERT(!rc);
+ 
+@@ -92,8 +88,8 @@
+     hddvi = NEXUS_HdDviInput_Open(NEXUS_ALIAS_ID + 0, &settings);
+     BDBG_ASSERT(hddvi);
+ 
+-    rc = NEXUS_SimpleVideoDecoder_StartHdDviInput(videoDecoder, hddvi, NULL);
+-    BDBG_ASSERT(!rc);
++    printf("HD DVI active. press ENTER to exit\n");
++    getchar();
+ 
+     nxapp_prompt("exit");
+ 
+diff -auNrd a/nexus/nxclient/include/nxclient_global.h b/nexus/nxclient/include/nxclient_global.h
+--- a/nexus/nxclient/include/nxclient_global.h	2019-09-24 17:35:27.000000000 -0400
++++ b/nexus/nxclient/include/nxclient_global.h	2019-09-26 15:52:33.205659858 -0400
+@@ -664,10 +664,24 @@
+ processing (like deinterlacing) and lacks aspect ratio control. So it is
+ not an exact replica of what is on the display. Non-decoder inputs (like HDMI)
+ are not supported.
+-**/
++*/
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++typedef enum NxClient_ScreenshotWindow
++{
++    NxClient_ScreenshotWindow_eGraphics, /* Capture the graphics framebuffer */
++    NxClient_ScreenshotWindow_eVideo, /* Capture any video window. */
++    NxClient_ScreenshotWindow_eAll, /* Capture the framebuffer and all video windows. */
++    NxClient_ScreenshotWindow_eMax
++} NxClient_ScreenshotWindow;
++#endif
++
+ typedef struct NxClient_ScreenshotSettings
+ {
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    NxClient_ScreenshotWindow screenshotWindow;
++#else
+     unsigned tbd;
++#endif
+ } NxClient_ScreenshotSettings;
+ 
+ void NxClient_GetDefaultScreenshotSettings(
+diff -auNrd a/nexus/nxclient/include/nxclient.h b/nexus/nxclient/include/nxclient.h
+--- a/nexus/nxclient/include/nxclient.h	2019-09-24 17:35:27.000000000 -0400
++++ b/nexus/nxclient/include/nxclient.h	2019-09-26 15:52:33.205659858 -0400
+@@ -46,6 +46,19 @@
+ #include "nexus_surface_compositor_types.h"
+ #include "nxclient_global.h"
+ #include "nxclient_standby.h"
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++#include "nexus_hdmi_output.h"
++#include "nexus_hdmi_output_hdcp.h"
++#include "nexus_display_vbi.h"
++#ifdef NEXUS_HAS_RFM
++#include "nexus_rfm.h"
++#else
++typedef struct NEXUS_RfmSettings
++{
++    int unused;
++} NEXUS_RfmSettings;
++#endif
++#endif
+ 
+ #ifdef __cplusplus
+ extern "C" {
+@@ -94,6 +107,10 @@
+ #define NXCLIENT_SECURE_GRAPHICS_HEAP    6
+ #define NXCLIENT_ARR_HEAP                7
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++#define NXCLIENT_3PARTY_HEAP             7
++#endif
++
+ #define NXCLIENT_NOT_ALLOWED             NEXUS_MAKE_ERR_CODE(0x200, 1)
+ 
+ 
+@@ -479,6 +496,131 @@
+ void NxClient_GetDefaultReconfigSettings(
+     NxClient_ReconfigSettings *pSettings
+     );
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++/**
++Rfm settings structure used by a client
++to request rfm settings
++**/
++typedef struct NxClient_RfmSetttings
++{
++    NEXUS_RfmSettings settings;
++} NxClient_RfmSetttings;
++
++NEXUS_Error NxClient_GetRfmSettings(
++    NxClient_RfmSetttings *pSettings
++    );
++
++NEXUS_Error NxClient_SetRfmSettings(
++    const NxClient_RfmSetttings *pSettings
++    );
++
++NEXUS_Error NxClient_ConnectVideoOutputs(void);
++
++void NxClient_DisconnectVideoOutputs(void);
++
++void NxClient_IsHdcpEnabled(bool  *pbHdcpKeyReady);
++
++
++/**
++HDMI output status 
++**/
++typedef struct NxClient_HdmiOutputStatus
++{
++    NEXUS_HdmiOutputStatus status;
++} NxClient_HdmiOutputStatus;
++
++
++/**
++get hdmi status
++**/
++NEXUS_Error NxClient_GetHdmiStatus(
++    NxClient_HdmiOutputStatus *pStatus
++    );
++
++/** 
++HDMI output Hdcp status
++**/
++typedef struct NxClient_HdmiOutputHdcpStatus
++{
++    NEXUS_HdmiOutputHdcpStatus status;
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    bool bHdcpFailedAfterMaxTrials;
++#endif
++
++} NxClient_HdmiOutputHdcpStatus;
++
++/** 
++get hdcp status
++**/
++NEXUS_Error NxClient_GetHdcpStatus(
++    NxClient_HdmiOutputHdcpStatus *pStatus
++    );
++
++NEXUS_Error NxClient_Display_SetMacroVision(
++	NEXUS_DisplayMacrovisionType type,
++	const NEXUS_DisplayMacrovisionTables *pTable
++	);
++
++/**
++HDMI basic edid data
++**/
++typedef struct NxClient_HdmiBasicEdidData
++{
++    NEXUS_HdmiOutputBasicEdidData data;
++} NxClient_HdmiBasicEdidData;
++
++/**
++get basic edid data
++**/
++NEXUS_Error NxClient_GetBasicEdidData(
++    NxClient_HdmiBasicEdidData *pData
++    );
++
++typedef struct NxClient_HdmiEdidBlock
++{
++   NEXUS_HdmiOutputEdidBlock data;
++} NxClient_HdmiEdidBlock;
++
++NEXUS_Error NxClient_GetHdmiEdidBlock(
++    unsigned int  block_num,
++    NxClient_HdmiEdidBlock *pData
++    );
++
++
++/**
++HDCP data
++**/
++typedef struct NxClient_HdcpInfo
++{
++  /* Hdcp1.x keys */
++    uint8_t  data[1128];
++    
++  /* Hdcp2.x keys */
++    struct {
++       void *buffer;
++       unsigned size;
++    }hdcp2x;
++} NxClient_HdcpInfo;
++/**
++enable HDCP
++**/
++NEXUS_Error NxClient_EnableHdmiHdcp(
++    NxClient_HdcpInfo hdcpInfo
++    );
++typedef struct NxClient_ComponentStatus
++{
++    bool mute;
++    NEXUS_DisplayAspectRatio aspectRatio; 
++    NEXUS_VideoFormat format;      
++    bool mpaaDecimationEnabled;              
++} NxClient_ComponentStatus;
++
++NEXUS_Error NxClient_GetComponentStatus(
++    NxClient_ComponentStatus *pStatus
++    );
++
++NEXUS_Error NxClient_MuteHdmiOutput(bool mute);
++#endif
+ 
+ NEXUS_Error NxClient_Reconfig(
+     const NxClient_ReconfigSettings *pSettings
+diff -auNrd a/nexus/nxclient/server/Makefile b/nexus/nxclient/server/Makefile
+--- a/nexus/nxclient/server/Makefile	2019-09-24 17:35:27.000000000 -0400
++++ b/nexus/nxclient/server/Makefile	2019-09-26 15:52:33.205659858 -0400
+@@ -66,7 +66,12 @@
+ 
+ # namevalue
+ vpath %.c ${NEXUS_TOP}/utils
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++NXCLIENT_CFLAGS += -I${NEXUS_TOP}/utils
++else
+ CFLAGS += -I${NEXUS_TOP}/utils
++endif
+ 
+ all: nxserver
+ ifneq ($(NEXUS_HEADERS),n)
+@@ -76,7 +81,12 @@
+ server: nxserver
+ 
+ IPC :=  ${NEXUS_TOP}/lib/ipc
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++NXCLIENT_CFLAGS += -I${IPC} -I$(BINDIR)/stubs -I$(NEXUS_TOP)/nxclient/server
++else
+ CFLAGS += -I${IPC} -I$(BINDIR)/stubs -I$(NEXUS_TOP)/nxclient/server
++endif
+ EXTRA_OBJS := $(BINDIR)/bipc_util.o $(BINDIR)/bipc_server.o $(BINDIR)/bipc_client.o
+ vpath %.c ${IPC}
+ 
+@@ -87,6 +97,16 @@
+ endif
+ endif
+ 
++
++#COMCAST_RDK_SPECIFIC_CHANGE, ENABLE_SD_NOTIFY ###########################
++ifeq (1,1)
++ifeq ($(ENABLE_SD_NOTIFY),y)
++NXCLIENT_CFLAGS += -DENABLE_SD_NOTIFY
++NXCLIENT_CFLAGS += -I$(PKG_CONFIG_SYSROOT_DIR)/usr/include
++LDFLAGS += -L$(PKG_CONFIG_SYSROOT_DIR)/usr/lib -lsystemd
++endif
++endif
++
+ clean: clean_nexus clean_apps
+ 	${Q_}if [ -d ${B_REFSW_OBJ_ROOT} ]; then find ${B_REFSW_OBJ_ROOT} -type d -empty -delete; fi
+ 
+@@ -102,19 +122,60 @@
+ else
+ nexus:
+ 	${Q_}$(MAKE) $(NEXUS_BUILD_OPTIONS) -C $(NEXUS_TOP)/build
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++	$(MAKE) $(NEXUS_BUILD_OPTIONS) -C $(NEXUS_TOP)/lib/os
++endif
+ clean_nexus:
+ 	${Q_}$(MAKE) $(NEXUS_BUILD_OPTIONS) -C $(NEXUS_TOP)/build clean
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++	$(MAKE) $(NEXUS_BUILD_OPTIONS) -C $(NEXUS_TOP)/lib/os clean
++endif
+ endif
+ 
+ # This is the minimum needed to compile and link with Nexus
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++NXCLIENT_CFLAGS += -g $(NEXUS_CFLAGS) ${NEXUS_INTERNAL_CFLAGS} $(addprefix -I,$(NEXUS_APP_INCLUDE_PATHS)) $(addprefix -D,$(NEXUS_APP_DEFINES))
++else
+ CFLAGS += -g $(NEXUS_CFLAGS) ${NEXUS_INTERNAL_CFLAGS} $(addprefix -I,$(NEXUS_APP_INCLUDE_PATHS)) $(addprefix -D,$(NEXUS_APP_DEFINES))
++endif
+ include $(NEXUS_TOP)/nxclient/include/nxclient.inc
+ CFLAGS += $(NXCLIENT_CFLAGS)
+ # temporarily needed for namevalue.c conversion, should refactor
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++NXCLIENT_CFLAGS += -I$(NEXUS_TOP)/../BSEAV/lib/media
++NXCLIENT_CFLAGS += -MMD
++else
+ CFLAGS += -I$(NEXUS_TOP)/../BSEAV/lib/media
+ CFLAGS += -MMD
++endif
+ # Some systems build libnxserver.a into a .so. This could increase code size, but I don't see it.
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++NXCLIENT_CFLAGS += -fPIC
++else
+ CFLAGS += -fPIC
++endif
++
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++### COMCAST_RDK_SPECIFIC_CHANGE ###########################
++#HDCP
++NXCLIENT_CFLAGS += -I$(NEXUS_TOP)/lib/os/include  -I$(NEXUS_TOP)/lib/os/include/linuxuser
++LDFLAGS += -lb_os
++###########################################################
++
++### COMCAST_RDK_SPECIFIC_CHANGE ###########################
++ifeq ($(NEXUS_PLATFORM),97125)
++#libjpeg
++NXCLIENT_CFLAGS += -I$(NEXUS_TOP)/../AppLibs/opensource/jpeg/jpeg-8d/
++LDFLAGS += -L$(NEXUS_TOP)/../AppLibs/opensource/jpeg/jpeg-8d/.libs/ -ljpeg
++endif
++###########################################################
++endif
+ 
+ vpath %.c $(NEXUS_TOP)/../BSEAV/lib/sysfs
+ CFLAGS += -I$(NEXUS_TOP)/../BSEAV/lib/sysfs
+@@ -207,7 +268,12 @@
+ $(BINDIR)/%.o: %.c
+ 	@echo [Compile... $(notdir $@)]
+ 	@mkdir -p $(dir $@)
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++	$(Q_)$(CC) -c -o $@ $(filter %.c,$<) $(NXCLIENT_CFLAGS)
++else
+ 	$(Q_)$(CC) -c -o $@ $(filter %.c,$<) $(CFLAGS)
++endif
+ 
+ $(NXSERVERLIB): $(NXSERVERLIB_OBJS) $(EXTRA_OBJS)
+ 	@echo [Archive... $(notdir $@)]
+@@ -216,8 +282,12 @@
+ 
+ $(BINDIR)/nxserver: $(NXSERVER_OBJS) $(NXSERVERLIB) $(NEXUS_STATIC_LIB)
+ 	@echo [Link... $@]
+-	@mkdir -p $(dir $@)
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++	$(Q_)$(CC) -o $@ $(filter %.o %.a,$^) $(NXCLIENT_CFLAGS) $(LDFLAGS)
++else
+ 	$(Q_)$(CC) -o $@ $(filter %.o %.a,$^) $(CFLAGS) $(LDFLAGS)
++endif
+ 	$(CP) $@ ${NEXUS_BIN_DIR}
+ 
+ nxserver: $(BINDIR)/nxserver
+diff -auNrd a/nexus/nxclient/server/Makefile.lib b/nexus/nxclient/server/Makefile.lib
+--- a/nexus/nxclient/server/Makefile.lib	2019-09-24 17:35:27.000000000 -0400
++++ b/nexus/nxclient/server/Makefile.lib	2019-09-26 15:52:33.205659858 -0400
+@@ -98,7 +98,12 @@
+ IPC_CLIENT_STUB := $(BINDIR)/stubs/ipc_stubs_client.h
+ IPC_SERVER_VEFIFY_STUB := $(BINDIR)/stubs/ipc_stubs_verify.h
+ IPC :=  ${NEXUS_TOP}/lib/ipc
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++NXCLIENT_CFLAGS += -I${IPC} -I$(BINDIR)/stubs
++else
+ CFLAGS += -I${IPC} -I$(BINDIR)/stubs
++endif
+ vpath %.c ${IPC}
+ 
+ ${IPC_CLIENT_STUB}: ${IPC_SERVER_STUB}
+@@ -106,17 +111,33 @@
+ 
+ ${IPC_SERVER_STUB}: ${NEXUS_TOP}/nxclient/server/nxserver_ipc.h
+ 	${Q_}${MKDIR} -p $(BINDIR)/stubs
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++	${Q_}$(CC) -MM ${NXCLIENT_CFLAGS} $^ | ${PERL} -I ${NEXUS_TOP}/build/tools/common -I ${NEXUS_TOP}/build/tools/abiverify ${IPC}/build/bipc_build.pl -verify  ${IPC_SERVER_STUB} ${IPC_CLIENT_STUB} ${IPC_SERVER_VEFIFY_STUB} $^
++else
+ 	${Q_}$(CC) -MM ${CFLAGS} $^ | ${PERL} -I ${NEXUS_TOP}/build/tools/common -I ${NEXUS_TOP}/build/tools/abiverify ${IPC}/build/bipc_build.pl -verify  ${IPC_SERVER_STUB} ${IPC_CLIENT_STUB} ${IPC_SERVER_VEFIFY_STUB} $^
++endif
+ 
+ $(BINDIR)/nxclient_ipc.o: ${IPC_SERVER_STUB} ${IPC_CLIENT_STUB}
+ $(BINDIR)/nxclient_ipc_verify.o: ${IPC_SERVER_VEFIFY_STUB}
+ 
+ # NEXUS flags
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++NXCLIENT_CFLAGS += -g $(NEXUS_CFLAGS) $(addprefix -I,$(NEXUS_APP_INCLUDE_PATHS)) $(addprefix -D,$(NEXUS_APP_DEFINES))
++else
+ CFLAGS += -g $(NEXUS_CFLAGS) $(addprefix -I,$(NEXUS_APP_INCLUDE_PATHS)) $(addprefix -D,$(NEXUS_APP_DEFINES))
++endif
+ 
+ # nxclient
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++NXCLIENT_CFLAGS += -I$(NEXUS_TOP)/nxclient/include -I$(NEXUS_TOP)/nxclient/server
++NXCLIENT_CFLAGS += -fPIC
++else
+ CFLAGS += -I$(NEXUS_TOP)/nxclient/include -I$(NEXUS_TOP)/nxclient/server
+ CFLAGS += -fPIC
++endif
+ 
+ $(BINDIR)/nxclient_local.o $(BINDIR)/nxclient_ipc.o: $(NEXUS_TOP)/nxclient/include/nxclient.h $(NEXUS_TOP)/nxclient/include/nxclient_config.h
+ 
+@@ -154,7 +175,12 @@
+ endif
+ 
+ $(BINDIR)/%.o: %.c
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++	${Q_}$(CC) -c -o $@ $(filter %.c %.s %.o, $<) ${NXCLIENT_CFLAGS}
++else
+ 	${Q_}$(CC) -c -o $@ $(filter %.c %.s %.o, $<) ${CFLAGS}
++endif
+ 
+ clean:
+ 	$(RM) -r $(IPC_LIB) $(IPC_LIB_STATIC) $(LOCAL_LIB) $(BINDIR)/libnxclient.map $(BINDIR)/*.o $(BINDIR)/stubs $(NXCLIENT_MODE_CHECK)
+diff -auNrd a/nexus/nxclient/server/nxclient_api.inc b/nexus/nxclient/server/nxclient_api.inc
+--- a/nexus/nxclient/server/nxclient_api.inc	2019-09-24 17:35:27.000000000 -0400
++++ b/nexus/nxclient/server/nxclient_api.inc	2019-09-26 15:52:33.205659858 -0400
+@@ -570,3 +570,128 @@
+     UNLOCK();
+     return rc;
+ }
++
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++NEXUS_Error NxClient_GetHdmiEdidBlock(unsigned int block_num, NxClient_HdmiEdidBlock *pData)
++{
++    NEXUS_Error rc;
++    LOCK();
++    rc = nxclient_p_get_hdmi_edid_block(NXCLIENT_STATE_RESTRICTED, block_num, pData);
++    UNLOCK();
++    return rc;
++}
++NEXUS_Error NxClient_GetRfmSettings(NxClient_RfmSetttings *pSettings)
++{
++    NEXUS_Error rc;
++    LOCK();
++    rc = nxclient_p_get_rfm_settings(NXCLIENT_STATE_RESTRICTED, pSettings);
++    UNLOCK();
++    return rc;
++}
++
++NEXUS_Error NxClient_SetRfmSettings(const NxClient_RfmSetttings *pSettings)
++{
++    NEXUS_Error rc;
++    LOCK();
++    rc = nxclient_p_set_rfm_settings(NXCLIENT_STATE_RESTRICTED, pSettings);
++    UNLOCK();
++    return rc;
++}
++
++NEXUS_Error NxClient_MuteHdmiOutput(bool mute)
++{
++    NEXUS_Error rc;
++    LOCK();
++    rc = nxclient_p_mute_hdmi_output(NXCLIENT_STATE_RESTRICTED, mute); 
++    UNLOCK();
++    return rc;
++}
++
++NEXUS_Error NxClient_ConnectVideoOutputs(void)
++{
++    NEXUS_Error rc;
++    LOCK();
++    rc = nxclient_p_connect_video_outputs(NXCLIENT_STATE_RESTRICTED);
++    UNLOCK();
++    return rc;
++}
++
++void NxClient_DisconnectVideoOutputs(void)
++{
++    LOCK();
++    nxclient_p_disconnect_video_outputs(NXCLIENT_STATE_RESTRICTED);
++    UNLOCK();
++}
++
++NEXUS_Error NxClient_GetHdmiStatus(NxClient_HdmiOutputStatus *pStatus)
++{
++    NEXUS_Error rc;
++    LOCK();
++    rc = nxclient_p_get_hdmi_status(NXCLIENT_STATE_RESTRICTED, pStatus);
++    UNLOCK();
++    return rc;
++}
++
++NEXUS_Error NxClient_GetHdcpStatus(NxClient_HdmiOutputHdcpStatus *pStatus)
++{
++    NEXUS_Error rc;
++    LOCK();
++    rc = nxclient_p_get_hdcp_status(NXCLIENT_STATE_RESTRICTED, pStatus);
++    UNLOCK();
++    return rc;
++}
++
++NEXUS_Error NxClient_GetBasicEdidData(NxClient_HdmiBasicEdidData *pData)
++{
++    NEXUS_Error rc;
++    LOCK();
++    rc = nxclient_p_get_basic_edid_data(NXCLIENT_STATE_RESTRICTED, pData);
++    UNLOCK();
++    return rc;
++}
++
++NEXUS_Error NxClient_EnableHdmiHdcp(NxClient_HdcpInfo hdcpInfo)
++{
++    NEXUS_Error rc;
++    void *ptr;
++    NEXUS_MemoryBlockHandle block = NULL;
++
++    LOCK();
++
++    if(hdcpInfo.hdcp2x.size && hdcpInfo.hdcp2x.buffer)
++    {
++        block = NEXUS_MemoryBlock_Allocate(NULL, hdcpInfo.hdcp2x.size, 0, NULL);
++        if (!block) return BERR_TRACE(-1);
++       
++        rc = NEXUS_MemoryBlock_Lock(block, &ptr);
++        if (rc) return BERR_TRACE(rc);
++         
++        memcpy(ptr,hdcpInfo.hdcp2x.buffer,hdcpInfo.hdcp2x.size);
++        NEXUS_MemoryBlock_Unlock(block);
++    }
++    rc = nxclient_p_enable_hdmi_hdcp(NXCLIENT_STATE_RESTRICTED, hdcpInfo, block);
++
++    if(block)
++        NEXUS_MemoryBlock_Free(block);
++
++    UNLOCK();
++    return rc;
++}
++
++void NxClient_IsHdcpEnabled(bool  *pbHdcpKeyReady)
++{
++    LOCK();
++    nxclient_p_is_hdcp_enabled(NXCLIENT_STATE_RESTRICTED, pbHdcpKeyReady); 
++    UNLOCK();
++}
++
++NEXUS_Error NxClient_GetComponentStatus(NxClient_ComponentStatus *pStatus)
++{
++    NEXUS_Error rc;
++    LOCK();
++    rc = nxclient_p_get_component_status(NXCLIENT_STATE_RESTRICTED, pStatus); 
++    UNLOCK();
++    return rc;
++}
++#endif
++
+diff -auNrd a/nexus/nxclient/server/nxserver.c b/nexus/nxclient/server/nxserver.c
+--- a/nexus/nxclient/server/nxserver.c	2019-09-24 17:35:27.000000000 -0400
++++ b/nexus/nxclient/server/nxserver.c	2019-09-26 15:52:33.205659858 -0400
+@@ -55,6 +55,14 @@
+ #endif
+ #include "nexus_display.h"
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++#include <sys/stat.h>
++
++#ifdef ENABLE_SD_NOTIFY
++#include <systemd/sd-daemon.h>
++#endif
++#endif
++
+ BDBG_MODULE(nxserver);
+ 
+ #if !defined(NEXUS_HAS_STREAM_MUX)
+@@ -62,6 +70,33 @@
+ #endif
+ #define APP_MAX_CLIENTS 32
+ #define MB (1024*1024)
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++#include "nxserverlib_impl.h"
++#include "nexus_surface_compositor.h"
++#if NEXUS_HAS_PICTURE_DECODER
++#include "nexus_picture_decoder.h"
++#endif
++NEXUS_SurfaceClientHandle splash_screen_client, splash_screen_blit_client;
++NEXUS_SurfaceHandle          splash_screen_jpegSurface;
++#if NEXUS_HAS_PICTURE_DECODER
++NEXUS_PictureDecoderHandle   splash_screen_pictureDecoder;
++#endif
++bool splash_screen_client_created = 0;
++#define SPLASH_SCREEN_CLIENT_ID 10
++
++#if BCHP_CHIP == 7125
++/* Gabe 6/6/2014: BPV-7422
++    As per SW7445-1162, NxServer is going to share heap 0 in 14.2 and beyond. This removes the need
++    for a dedicated 16MB heap 14 or 15. This change will apply to all platforms but I'm currently
++    changing this for RNG only
++
++    Define NEXUS_FULL_CLIENT_HEAP to the default heap 0 */
++#define NEXUS_FULL_CLIENT_HEAP 0
++#else
++#define NEXUS_FULL_CLIENT_HEAP (NEXUS_MAX_HEAPS-1)
++#endif
++
++#endif
+ 
+ static struct {
+     BKNI_MutexHandle lock;
+@@ -284,6 +319,196 @@
+         }
+     }
+ }
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++static void complete(void *context, int param)
++{
++    BSTD_UNUSED(param);
++    BKNI_SetEvent((BKNI_EventHandle)context);
++}
++#if BCHP_CHIP == 7125
++#include "jpeglib.h"
++static int decodeJPEG(const char * filename, NEXUS_SurfaceHandle *picSurface, NEXUS_SurfaceCreateSettings  *jpegSurfaceSettings){
++    /* these are standard libjpeg structures for reading(decompression) */
++    struct jpeg_decompress_struct cinfo;
++    struct jpeg_error_mgr jerr;
++    unsigned int i = 0;
++    uint8_t *dest_ptr;
++
++    JSAMPARRAY row_pointer;
++
++    NEXUS_SurfaceMemory surfaceMemory;
++    FILE *infile = fopen( filename, "rb" );
++
++    if ( !infile )
++    {
++        printf("Error opening jpeg file %s\n!", filename );
++        goto err;
++    }
++    /* here we set up the standard libjpeg error handler */
++    cinfo.err = jpeg_std_error( &jerr );
++    /* setup decompression process and source, then read JPEG header */
++    jpeg_create_decompress( &cinfo );
++    /* this makes the library read from infile */
++    jpeg_stdio_src( &cinfo, infile );
++    /* reading the image header which contains image information */
++    jpeg_read_header( &cinfo, TRUE );
++    /* Start decompression jpeg here */
++    jpeg_start_decompress( &cinfo );
++
++    /*Set surface dimensions and pixel format*/
++    NEXUS_Surface_GetDefaultCreateSettings(jpegSurfaceSettings);
++
++    jpegSurfaceSettings->pixelFormat = NEXUS_PixelFormat_eB8_G8_R8_A8;
++    jpegSurfaceSettings->width       = cinfo.output_width;
++    jpegSurfaceSettings->height      = cinfo.output_height;
++    *picSurface = NEXUS_Surface_Create(jpegSurfaceSettings);
++
++    if(!*picSurface)
++        goto err;
++
++    NEXUS_Surface_GetMemory(*picSurface, &surfaceMemory);
++
++    /* now actually read the jpeg into the raw buffer */
++    row_pointer = (JSAMPARRAY)malloc(sizeof(JSAMPROW) * 1);
++    row_pointer[0] = (JSAMPROW)malloc(cinfo.output_width*cinfo.num_components);
++
++    /*convert from RGB to ARGB into surface buffer*/
++    dest_ptr = (uint8_t *)surfaceMemory.buffer;
++
++    while( cinfo.output_scanline < cinfo.image_height )
++    {
++        uint8_t* src_ptr;
++        jpeg_read_scanlines( &cinfo, row_pointer, 1 );
++        src_ptr=(uint8_t*)row_pointer[0];
++        for( i = 0; i < cinfo.image_width*cinfo.num_components; i+=cinfo.num_components) {
++            *dest_ptr++ = 0xFF;
++            *dest_ptr++ = src_ptr[i];
++            *dest_ptr++ = src_ptr[i+1];
++            *dest_ptr++ = src_ptr[i+2];
++        }
++    }
++
++    /*Finish decompress so close and free pointers*/
++    jpeg_finish_decompress( &cinfo );
++    jpeg_destroy_decompress( &cinfo );
++    free( row_pointer[0] );
++    free( row_pointer );
++    fclose(infile);
++    return 0;
++err:
++    jpeg_destroy_decompress(&cinfo);
++    if ( infile )
++        fclose(infile);
++    if (*picSurface)
++        NEXUS_Surface_Destroy(*picSurface);
++    return 1;
++}
++#endif
++#if NEXUS_HAS_PICTURE_DECODER
++int decodeJpeg( const char *filename, NEXUS_SurfaceHandle *picSurface, NEXUS_PictureDecoderStatus *jpegStatus,
++                NEXUS_SurfaceCreateSettings *jpegSurfaceSettings, NEXUS_PictureDecoderHandle  *pictureDecoder )
++{
++
++    NEXUS_PictureDecoderStartSettings pictureSettings;
++    NEXUS_PictureDecoderOpenSettings  decoderSettings;
++    int rc;
++    FILE *fin ;
++    void *buffer;
++    size_t size;
++    NEXUS_PlatformConfiguration platformConfig;
++
++    fin = fopen(filename,"rb");
++    if(!fin) {
++        perror(filename);
++        return 2;
++    }
++
++    NEXUS_Platform_GetConfiguration(&platformConfig);
++
++    NEXUS_PictureDecoder_GetDefaultOpenSettings(&decoderSettings);
++
++    decoderSettings.heap = platformConfig.heap[NEXUS_FULL_CLIENT_HEAP];
++    decoderSettings.multiScanBufferSize = 2*1024*1024;
++    decoderSettings.bufferSize = 2*1024*1024;
++    *pictureDecoder = NEXUS_PictureDecoder_Open(0, &decoderSettings);
++
++    NEXUS_PictureDecoder_GetBuffer(*pictureDecoder, &buffer, &size); /* get location and size of the decoder's buffer */
++    rc = fread(buffer, 1, size, fin); /* read file into the decoder's buffer */
++    if(rc<0) {
++        perror(filename);
++        goto err_decode1;
++    } else if(rc==(int)size) {
++        fseek(fin, 0, SEEK_END);
++        if((unsigned)ftell(fin)>size) {
++            /* to decode larger file, requires to allocate larger buffer, see NEXUS_PictureDecoderOpenSettings * bufferSize */
++            fprintf(stderr, "JPEG file size %u is larger then buffer size %u, not supported\n", (unsigned)ftell(fin), (unsigned)size);
++            goto err_decode1;
++        }
++    }
++    NEXUS_PictureDecoder_ReadComplete(*pictureDecoder, 0, rc); /* commit data to the decoder */
++
++    NEXUS_PictureDecoder_GetDefaultStartSettings(&pictureSettings);
++    pictureSettings.format = NEXUS_PictureFormat_eJpeg;
++    NEXUS_PictureDecoder_Start(*pictureDecoder, &pictureSettings);
++
++    do {
++        NEXUS_PictureDecoder_GetStatus(*pictureDecoder, jpegStatus);
++        if( jpegStatus->state==NEXUS_PictureDecoderState_eError) {
++            fprintf(stderr, "decoding failed\n");
++            goto err_decode2;
++        }
++        usleep(1000);
++    } while(!jpegStatus->headerValid); /* wait for picture dimensions */
++
++    /* create picture that could handle complete picture */
++    NEXUS_Surface_GetDefaultCreateSettings(jpegSurfaceSettings);
++    jpegSurfaceSettings->pixelFormat = jpegStatus->header.format;
++    jpegSurfaceSettings->width       = jpegStatus->header.surface.width;
++    jpegSurfaceSettings->height      = jpegStatus->header.surface.height;
++    *picSurface = NEXUS_Surface_Create(jpegSurfaceSettings);
++
++    /* start decoding */
++    NEXUS_PictureDecoder_DecodeSegment(*pictureDecoder, *picSurface, NULL);
++    do {
++        NEXUS_PictureDecoder_GetStatus(*pictureDecoder, jpegStatus);
++        if( jpegStatus->state == NEXUS_PictureDecoderState_eError) {
++            fprintf(stderr, "decoding failed\n");
++            goto err_decode3;
++        }
++        usleep(1000);
++    } while( jpegStatus->state!=NEXUS_PictureDecoderState_eSegmentDone); /* wait for picture to decode */
++
++    NEXUS_PictureDecoder_Stop(*pictureDecoder);
++    return 0;
++err_decode3:
++    NEXUS_Surface_Destroy(*picSurface);
++err_decode2:
++    NEXUS_PictureDecoder_Stop(*pictureDecoder);
++err_decode1:
++    NEXUS_PictureDecoder_Close(*pictureDecoder);
++    return 1;
++}
++#endif
++#endif
++
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++void removeSplash(void)
++{
++    /* take down splashscreen when xre receiver joins */
++    if (splash_screen_client_created)
++    {
++#if 0
++        NEXUS_SurfaceClient_Release(splash_screen_blit_client);
++        NEXUS_SurfaceCompositor_DestroyClient(splash_screen_client);
++#endif
++#if NEXUS_HAS_PICTURE_DECODER
++        NEXUS_PictureDecoder_Close(splash_screen_pictureDecoder);
++#endif
++        NEXUS_Surface_Destroy(splash_screen_jpegSurface);
++        splash_screen_client_created = 0;
++    }
++}
++#endif
+ 
+ /* If you want to embed nxserverlib in your own server application,
+ we do not recommend you call nxserver_init. Instead, copy this code and
+@@ -297,6 +522,18 @@
+     struct nxserver_settings settings;
+     struct nxserver_cmdline_settings cmdline_settings;
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    const char *filename = "/mnt/nfs/env/dfb_splash.jpg";
++#if NEXUS_HAS_PICTURE_DECODER
++    NEXUS_PictureDecoderStatus   pictureStatus;
++#endif
++    NEXUS_SurfaceCreateSettings  jpegSurfaceSettings;
++    NEXUS_SurfaceClientSettings client_settings;
++    NEXUS_SurfaceCompositorClientSettings compositorClientSettings;
++    BKNI_EventHandle displayedEvent;
++#endif
++
++
+     /* Allow nxserver_init to be called twice if second time from NxClient_Join. This allows a local app can pass argv around NxClient_Join.
+     Only allow g_app.refcnt of 0, 1 or 2. nxclient_local has its own refcnt for nxclient. */
+     if (!argv && g_app.refcnt == 1) {
+@@ -327,6 +564,10 @@
+     if (rc) return NULL;
+ 
+     BKNI_CreateMutex(&g_app.lock);
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    BKNI_CreateEvent(&displayedEvent);
++#endif
++
+     settings.lock = g_app.lock;
+     nxserver_set_client_heaps(&settings, &platformSettings);
+     settings.client.connect = client_connect;
+@@ -345,6 +586,26 @@
+     if (!settings.prompt) {
+         signal(SIGTERM, sig_handler);
+     }
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++#if NEXUS_HAS_PICTURE_DECODER || (BCHP_CHIP == 7125)
++
++    /* Draw Comcast splash screen*/
++#if NEXUS_HAS_PICTURE_DECODER
++    rc = decodeJpeg(filename, &splash_screen_jpegSurface, &pictureStatus, &jpegSurfaceSettings, &splash_screen_pictureDecoder );
++#else
++    rc = decodeJPEG(filename, &splash_screen_jpegSurface, &jpegSurfaceSettings);
++#endif
++#endif
++#endif
++
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++#ifdef ENABLE_SD_NOTIFY
++    sd_notifyf(0, "READY=1\n"
++              "STATUS=Nexus Server is Successfully Initialized\n"
++              "MAINPID=%lu",
++              (unsigned long) getpid());
++#endif
++#endif
+ 
+     if (settings.prompt) {
+         nxserver_prompt();
+@@ -357,13 +618,36 @@
+         }
+     }
+     else if (blocking) {
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++        struct stat buffer;
++        int splashRemoved = 0;
++
++        printf("Server is running.\n");
++        while (1){
++
++            if(!splashRemoved){
++                if(stat ("/tmp/.xreSplashDrawn", &buffer) == 0){
++                    removeSplash();
++                    splashRemoved = 1;
++                }
++            }
++            BKNI_Sleep(1000);
++            if (g_exit) break;
++        }
++#else
+         printf("nxserver is running.\n");
+         while (1) {
+             BKNI_Sleep(1000);
+             if (g_exit) break;
+         }
++#endif
++
+     }
+     /* else return immediately. */
++
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    removeSplash();
++#endif
+     g_app.refcnt++;
+     return g_app.server;
+ 
+diff -auNrd a/nexus/nxclient/server/nxserver_cmdline.c b/nexus/nxclient/server/nxserver_cmdline.c
+--- a/nexus/nxclient/server/nxserver_cmdline.c	2019-09-24 17:35:27.000000000 -0400
++++ b/nexus/nxclient/server/nxserver_cmdline.c	2019-09-26 15:52:33.205659858 -0400
+@@ -960,6 +960,11 @@
+             else if (!strcmp("protected", argv[curarg])) {
+                 settings->client_mode = NEXUS_ClientMode_eProtected;
+             }
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++            else if (!strcmp("verified", argv[curarg])) {
++                settings->client_mode = NEXUS_ClientMode_eVerified;
++            }
++#endif
+             else {
+                 print_usage();
+                 return -1;
+@@ -1013,6 +1018,11 @@
+                 return -1;
+             }
+         }
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++		else if (!strcmp(argv[curarg], "-smoothscaling")) {
++			settings->smooth_scaling = true;
++        }
++#endif
+         else if (!strcmp(argv[curarg], "-keypad") && curarg+1 < argc) {
+             if (nxserverlib_parse_onoff(argv[++curarg], &settings->session[0].keypad)) {
+                 print_usage();
+@@ -1870,6 +1880,13 @@
+         settings->client.heap[NXCLIENT_ARR_HEAP] = platformConfig.heap[index];
+     }
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    index = nxserver_heap_by_type(pPlatformSettings, NEXUS_HEAP_TYPE_3PARTY_DRIVER);
++    if (index != -1 && pPlatformSettings->heap[index].size) {
++        settings->client.heap[NXCLIENT_3PARTY_HEAP] = platformConfig.heap[index];
++    }
++#endif
++
+     /* Untrusted clients will not be able to use the secondary heap (because of simple bounds check), so just don't provide it. */
+     if (!settings->certificate.length) {
+         index = nxserver_heap_by_type(pPlatformSettings, NEXUS_HEAP_TYPE_SECONDARY_GRAPHICS);
+diff -auNrd a/nexus/nxclient/server/nxserver_ipc.h b/nexus/nxclient/server/nxserver_ipc.h
+--- a/nexus/nxclient/server/nxserver_ipc.h	2019-09-24 17:35:27.000000000 -0400
++++ b/nexus/nxclient/server/nxserver_ipc.h	2019-09-26 15:52:33.205659858 -0400
+@@ -107,6 +107,25 @@
+ int  nxclient_p_set_slave_display_graphics(nxclient_ipc_t client, unsigned slaveDisplay, NEXUS_SurfaceHandle surface);
+ int  nxclient_p_get_status(nxclient_ipc_t client, NxClient_Status *pStatus);
+ int  nxclient_p_get_standby_status(nxclient_ipc_t _client, NxClient_StandbyStatus *pStatus);
++
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++int  nxclient_p_get_rfm_settings(nxclient_ipc_t _client, NxClient_RfmSetttings *pSettings);
++int  nxclient_p_set_rfm_settings(nxclient_ipc_t _client, const NxClient_RfmSetttings *pSettings);
++
++int  nxclient_p_connect_video_outputs(nxclient_ipc_t _client);
++void nxclient_p_disconnect_video_outputs(nxclient_ipc_t _client);
++
++int  nxclient_p_get_hdmi_status(nxclient_ipc_t _client, NxClient_HdmiOutputStatus *pStatus);
++int  nxclient_p_get_hdcp_status(nxclient_ipc_t _client, NxClient_HdmiOutputHdcpStatus *pStatus);
++int  nxclient_p_get_basic_edid_data(nxclient_ipc_t _client, NxClient_HdmiBasicEdidData *pData);
++int  nxclient_p_get_hdmi_edid_block(nxclient_ipc_t _client, unsigned int block_num, NxClient_HdmiEdidBlock *pData);
++int  nxclient_p_enable_hdmi_hdcp(nxclient_ipc_t _client, NxClient_HdcpInfo hdcpInfo, NEXUS_MemoryBlockHandle block);
++int  nxclient_p_get_component_status(nxclient_ipc_t _client, NxClient_ComponentStatus *pStatus); 
++int nxclient_p_mute_hdmi_output(nxclient_ipc_t _client, bool mute); 
++void nxclient_p_is_hdcp_enabled(nxclient_ipc_t _client, bool  *pbHdcpKeyReady);
++
++#endif
++
+ int  nxclient_p_set_standby_settings(nxclient_ipc_t _client, const NxClient_StandbySettings *pSettings);
+ 
+ int  nxclient_p_config_get_join_settings(nxclient_ipc_t _client, NEXUS_ClientHandle nexusClient, NxClient_JoinSettings *pSettings );
+diff -auNrd a/nexus/nxclient/server/nxserverlib_audio.c b/nexus/nxclient/server/nxserverlib_audio.c
+--- a/nexus/nxclient/server/nxserverlib_audio.c	2019-09-24 17:35:27.000000000 -0400
++++ b/nexus/nxclient/server/nxserverlib_audio.c	2019-09-26 15:52:33.205659858 -0400
+@@ -496,6 +496,31 @@
+         rc = NEXUS_SimpleAudioPlayback_SetServerSettings(connect->client->session->audio.playbackServer, req->handles.simpleAudioPlayback[index].handle, &settings);
+         if (rc) return BERR_TRACE(rc);
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++#if NEXUS_AUDIO_MODULE_FAMILY == NEXUS_AUDIO_MODULE_FAMILY_APE_RAAGA
++        {
++            NEXUS_SimpleAudioPlaybackSettings playbackSettings;
++            NEXUS_PlatformSettings platformSettings;
++ 
++            NEXUS_Platform_GetSettings(&platformSettings);
++            NEXUS_SimpleAudioPlayback_GetSettings(req->handles.simpleAudioPlayback[index].handle, &playbackSettings);
++            if ( ((main_audio->session->server->settings.session[main_audio->session->index].dolbyMs == nxserverlib_dolby_ms_type_ms11) || 
++                 (main_audio->session->server->settings.session[main_audio->session->index].dolbyMs == nxserverlib_dolby_ms_type_ms12)) &&
++                 ((platformSettings.audioModuleSettings.loudnessMode == NEXUS_AudioLoudnessEquivalenceMode_eAtscA85) ||
++                 (platformSettings.audioModuleSettings.loudnessMode == NEXUS_AudioLoudnessEquivalenceMode_eEbuR128)))
++            {
++                playbackSettings.contentReferenceLevel = 0;
++            }
++            else
++            {
++                playbackSettings.contentReferenceLevel = 20;
++            }
++
++            NEXUS_SimpleAudioPlayback_SetSettings(req->handles.simpleAudioPlayback[index].handle, &playbackSettings);
++        }
++#endif
++#endif
++
+         req->handles.simpleAudioPlayback[index].r = pb;
+         pb->connect = connect;
+     }
+@@ -2269,8 +2294,19 @@
+             BDBG_MSG(("transfer audio %p: connect %p(%p) -> connect %p(%p)",
+                       (void*)r, (void*)session->main_audio->connect, (void*)mainAudioDecoder,
+                       (void*)connect, (void*)audioDecoder));
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++	        if (mainAudioDecoder != audioDecoder){
++                rc = NEXUS_SimpleAudioDecoder_MoveServerSettings(session->audio.server, mainAudioDecoder, audioDecoder, recreateDecoder ? false : true);
++                if (rc) { rc = BERR_TRACE(rc); goto err_setsettings; }
++	        }
++            else{
++                BDBG_WRN(("FALSE status... %p: playback(%p) -> connect %p(%p)",
++                   r, r->masterSimpleAudioDecoder, connect, audioDecoder));
++            }
++#else
+             rc = NEXUS_SimpleAudioDecoder_MoveServerSettings(session->audio.server, mainAudioDecoder, audioDecoder, recreateDecoder ? false : true);
+             if (rc) { rc = BERR_TRACE(rc); goto err_setsettings; }
++#endif
+ 
+             rc = audio_acquire_stc_index(connect, audioDecoder);
+             if (rc) { rc = BERR_TRACE(rc); goto err_setsettings; }
+@@ -2591,6 +2627,9 @@
+ {
+     NEXUS_SimpleAudioDecoderHandle simpleAudioDecoder = NULL;
+     NEXUS_SimpleAudioDecoderServerSettings audioSettings;
++    #if COMCAST_RDK_SPECIFIC_CHANGE || 1
++        NEXUS_SimpleAudioDecoderServerSettings currentAudioSettings;
++    #endif
+     unsigned i;
+     int rc;
+     nxserver_t server;
+@@ -2720,6 +2759,10 @@
+     encode_display = server->settings.session[r->session->index].output.encode;
+ 
+     NEXUS_SimpleAudioDecoder_GetServerSettings(session->audio.server, simpleAudioDecoder, &audioSettings);
++    #if COMCAST_RDK_SPECIFIC_CHANGE || 1
++        memcpy(&currentAudioSettings, &audioSettings, sizeof(NEXUS_SimpleAudioDecoderServerSettings));
++    #endif
++    
+ 
+     audioSettings.primary = r->audioDecoder[nxserver_audio_decoder_primary];
+     audioSettings.secondary = r->audioDecoder[nxserver_audio_decoder_passthrough];
+@@ -3144,8 +3187,20 @@
+         audioSettings.syncConnector = NEXUS_AudioConnectorType_eStereo;
+     }
+ 
++    #if COMCAST_RDK_SPECIFIC_CHANGE || 1
++        /* server settings should only be set if they've changed, otherwise an unnecessary flush may occur with prolonged wait for audio to return */
++        if (memcmp(&audioSettings, &currentAudioSettings, sizeof(NEXUS_SimpleAudioDecoderServerSettings)) != 0)
++        {
++            BDBG_MSG(("\n audio settings have changed, calling SetServerSettings ...\n"));
++            rc = NEXUS_SimpleAudioDecoder_SetServerSettings(session->audio.server, simpleAudioDecoder, &audioSettings, forceReconfig);
++            if (rc) { BERR_TRACE(rc); }
++        } else {
++            BDBG_MSG(("\n audio settings haven't changed, skipping SetServerSettings ...\n"));
++        }
++    #else
+     rc = NEXUS_SimpleAudioDecoder_SetServerSettings(session->audio.server, simpleAudioDecoder, &audioSettings, forceReconfig);
+     if (rc) { BERR_TRACE(rc); }
++    #endif
+     if (recreateDownstream) {
+         b_audio_update_persistent_settings(session, r);
+     }
+@@ -3240,6 +3295,10 @@
+             else {
+                 /* Special cases when native codec is not supported */
+                 switch(i) {
++            #if COMCAST_RDK_SPECIFIC_CHANGE || 1
++                /* transcode not supported */
++                /* also should probably move this to below like NEXUS_AudioCodec_eAc3Plus */
++            #else
+                 case NEXUS_AudioCodec_eAacAdts:
+                 case NEXUS_AudioCodec_eAacLoas:
+                 case NEXUS_AudioCodec_eAacPlusAdts:
+@@ -3248,6 +3307,7 @@
+                         config->hdmi.audioCodecOutput[i] = NxClient_AudioOutputMode_eTranscode;
+                     }
+                     break;
++            #endif
+                 case NEXUS_AudioCodec_eAc3Plus:
+                     /* downconvert DDP to AC3 if receiver only supports the latter.
+                     both AC3+ --> AC3+ and AC3+ --> AC3 use ePassthrough, but we prefer AC3+ over AC3 if EDID confirms it is possible (see config->hdmiAc3Plus). */
+diff -auNrd a/nexus/nxclient/server/nxserverlib.c b/nexus/nxclient/server/nxserverlib.c
+--- a/nexus/nxclient/server/nxserverlib.c	2019-09-26 15:24:38.000000000 -0400
++++ b/nexus/nxclient/server/nxserverlib.c	2019-09-26 15:54:49.302556424 -0400
+@@ -70,6 +70,38 @@
+ #include "bchp_cgmsae_0.h"
+ #endif
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++#include "nexus_hdmi_output_hdcp.h"
++#include "b_os_lib.h"
++#include "nexus_component_output.h"
++#include "nexus_video_output.h"
++#include "nexus_display.h"
++static bool bVideoOutputConnected = true;
++static bool bHdcpFailedAfterMaxTrials = false;
++static bool bHdcpI2cNoAck = false;
++static NEXUS_ThreadHandle hdcp_poll_thread_id = NULL;
++static NEXUS_ThreadHandle hdcp_reconnect_thread_id = NULL;
++
++static BKNI_EventHandle hdcp_poll_stop_event = NULL;
++static unsigned int s_numHdcpRetry = 0;
++static bool bRetryDisplayReconnect = false;
++static bool bRetryingOnTVOFF = false;
++#define HDCP_RETRY_NUM_MAX 6
++#define HDCP_RETRY_INTERVAL 2000
++static void reschedule_hdcp(struct b_session *session);
++static void nxserver_clear_hdcpkeys(struct b_session *session);
++static NEXUS_HdmiOutputHdcpStatus nxserverHdcpStatus;
++static NEXUS_HdmiOutputStatus nxserverHdmiStatus;
++
++static BKNI_MutexHandle nxserverHdcpStatus_lock;
++static bool bClientHdcpMute = false;
++
++#if (BCHP_CHIP != 7125)
++#define NEXUS_SHOW_BLUE_SCREEN_AFTER_HDCP_FAIL
++#endif
++
++#endif
++
+ BDBG_MODULE(nxserverlib);
+ #define BDBG_MSG_TRACE(X) /* BDBG_MSG(X) */
+ 
+@@ -266,8 +298,9 @@
+     int rc;
+ 
+     if (!client->nexusClient) return 0; /* local */
++#if COMCAST_RDK_SPECIFIC_CHANGE || 0
+     if (client->clientSettings.configuration.mode != NEXUS_ClientMode_eUntrusted) return 0;
+-
++#endif
+     NEXUS_Platform_GetClientResources(client->nexusClient, &resources);
+     switch (resource_type) {
+     case b_resource_surface_client:
+@@ -312,8 +345,9 @@
+ 
+     /* if the client is already unregistered, there's no need to revoke */
+     if (!client->nexusClient) return 0;
++#if COMCAST_RDK_SPECIFIC_CHANGE || 0
+     if (client->clientSettings.configuration.mode != NEXUS_ClientMode_eUntrusted) return 0;
+-
++#endif
+     NEXUS_Platform_GetClientResources(client->nexusClient, &resources);
+     switch (resource_type) {
+     case b_resource_surface_client:
+@@ -538,7 +572,9 @@
+     unsigned i;
+     struct b_req *req;
+     int rc;
+-
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    NEXUS_SurfaceCompositorClientSettings settings;
++#endif	
+     req = BKNI_Malloc(sizeof(*req));
+     if (!req) {
+         return BERR_TRACE(NEXUS_OUT_OF_SYSTEM_MEMORY);
+@@ -565,6 +601,17 @@
+         inc_id(server, b_resource_surface_client);
+ 
+         b_grant_resource_id(client, b_resource_surface_client, pResults->surfaceClient[i].id);
++
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++        NEXUS_SurfaceCompositor_GetClientSettings(client->session->surfaceCompositor, req->handles.surfaceClient[i].handle, &settings);
++#define NXCLIENT_DEFAULT_ZORDER 10
++#define NXCLIENT_MAX_ZORDER 255
++        settings.composition.zorder = NXCLIENT_DEFAULT_ZORDER;
++
++        rc = NEXUS_SurfaceCompositor_SetClientSettings(client->session->surfaceCompositor, req->handles.surfaceClient[i].handle, &settings);
++        if (rc) {rc = BERR_TRACE(rc);} /* fall through */
++#endif
++		
+     }
+     if (i) BDBG_MSG(("  %u surfaceClient", i));
+ #if NEXUS_HAS_SIMPLE_DECODER
+@@ -917,6 +964,12 @@
+         if (client->session->index == 0) {
+             return rc;
+         }
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++      /*  BDBG_MSG((" %s call bserver_set_audio_config, g_audioSettings.hdmi.pcm = %d\n", __FUNCTION__, g_audioSettings.hdmi.pcm)); */
++        rc = bserver_set_audio_config(client->session->main_audio, false);
++            if (rc) return BERR_TRACE(rc);
++#endif
++		
+     }
+ 
+     /* video_encoder must be acquired after audio_decoder to link mixer */
+@@ -1080,6 +1133,40 @@
+     BDBG_OBJECT_ASSERT(client, b_client);
+     NEXUS_SurfaceCompositor_GetClientSettings(client->session->surfaceCompositor, req->handles.surfaceClient[i].handle, &client_settings);
+     client_settings.composition = *pComposition;
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    {
++        if (!strcmp(client->joinSettings.name, "xre receiver"))
++        {
++            NEXUS_DisplayHandle display;
++            NEXUS_DisplaySettings displaySettings;
++
++            display = client->session->display[0].display;
++            NEXUS_Display_GetSettings(display, &displaySettings);
++            if (displaySettings.format == NEXUS_VideoFormat_e480p || displaySettings.format == NEXUS_VideoFormat_eNtsc)
++            {
++                client_settings.composition.virtualDisplay.width = 640;
++                client_settings.composition.virtualDisplay.height = 480;
++            }
++            else
++            {
++                client_settings.composition.virtualDisplay.width = 1280;
++                client_settings.composition.virtualDisplay.height = 720;
++            }
++#if (BCHP_CHIP == 7125)
++            /*BPV-7490, yeah this isn't pretty but withouth this CC was not showing over guide, need real zorder solution */
++            if (client_settings.composition.zorder > NXCLIENT_DEFAULT_ZORDER) {
++                client_settings.composition.zorder = NXCLIENT_DEFAULT_ZORDER;
++            }
++#endif
++			/*341, make sure the highest zorder is smaller than NXCLIENT_MAX_ZORDER*/
++			/* ensure that Closed Caption is always at the top */
++			if (client_settings.composition.zorder > NXCLIENT_MAX_ZORDER) {
++				client_settings.composition.zorder = NXCLIENT_DEFAULT_ZORDER;
++			}
++        }
++    }
++#endif
++    
+     rc = NEXUS_SurfaceCompositor_SetClientSettings(client->session->surfaceCompositor, req->handles.surfaceClient[i].handle, &client_settings);
+     if (rc) return BERR_TRACE(rc);
+ 
+@@ -1902,6 +1989,11 @@
+     NEXUS_VideoFormat bvnFormat;
+     struct nxserver_display_format target_format;
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    nxclient_t client;
++    bool findXREClient = false;
++#endif
++	
+     NEXUS_SurfaceCompositor_GetSettings(session->surfaceCompositor, &surface_compositor_settings);
+     surface_compositor_settings.enabled = true;
+ 
+@@ -2006,6 +2098,50 @@
+     surface_compositor_settings.allowCompositionBypass = session->server->settings.allowCompositionBypass;
+     rc = NEXUS_SurfaceCompositor_SetSettings(session->surfaceCompositor, &surface_compositor_settings);
+     if (rc) return BERR_TRACE(rc);
++
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    for (client = BLST_D_FIRST(&session->server->clients); client; client = BLST_D_NEXT(client, link)) {
++        if(client && (!strcmp(client->joinSettings.name, "xre receiver")))
++        {
++            findXREClient = true;
++            break;
++        }
++    }
++    if(findXREClient)
++    {
++        NEXUS_SurfaceComposition composition;
++        NEXUS_ClientResources resources;
++        unsigned j;
++        NEXUS_DisplayHandle display;
++        NEXUS_DisplaySettings displaySettings;
++
++        if (!client->nexusClient) return 0; /* local */
++        NEXUS_Platform_GetClientResources(client->nexusClient, &resources);
++        display = session->display[0].display;
++        NEXUS_Display_GetSettings(display, &displaySettings);
++
++        for (j=0;j<resources.surfaceClient.total;j++)
++        {
++
++            NxClient_P_GetSurfaceClientComposition(client, resources.surfaceClient.id[j], &composition);
++            /* Hardcoding to 1280x720 size of the virtual display for HD and 640 * 480 for SD*/
++            if (displaySettings.format == NEXUS_VideoFormat_e480p || displaySettings.format == NEXUS_VideoFormat_eNtsc)
++            {
++                composition.virtualDisplay.width = 640;
++                composition.virtualDisplay.height = 480;
++            }
++            else
++            {
++                composition.virtualDisplay.width = 1280;
++                composition.virtualDisplay.height = 720;
++            }
++
++            NxClient_P_SetSurfaceClientComposition(client, resources.surfaceClient.id[j], &composition);
++
++        }
++    }
++#endif
++	
+     BDBG_MSG(("enabled session %d surface_compositor again", session->index));
+ 
+ #if NEXUS_HAS_HDMI_OUTPUT
+@@ -2070,6 +2206,31 @@
+ }
+ 
+ #if NEXUS_HAS_HDMI_OUTPUT
++
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++static B_MutexHandle _lock;
++static B_SchedulerHandle _scheduler;
++static B_ThreadHandle _schedulerThread;
++static B_SchedulerTimerId  _timerID;
++
++bool HdcpKeyReady = false;
++/*
++from HDCP Spec:
++Table 51 gives the format of the HDCP SRM. All values are stored in big endian format.
++
++Specify KSVs here in big endian;
++*/
++#define NUM_REVOKED_KSVS 3
++static uint8_t NumRevokedKsvs = NUM_REVOKED_KSVS;
++static const NEXUS_HdmiOutputHdcpKsv RevokedKsvs[NUM_REVOKED_KSVS] =
++{
++    /* MSB ... LSB */
++    {{0xa5, 0x1f, 0xb0, 0xc3, 0x72}},
++    {{0x65, 0xbf, 0x04, 0x8a, 0x7c}},
++    {{0x65, 0x65, 0x1e, 0xd5, 0x64}}
++};
++#endif
++
+ static const char *g_hdcpLevelStr[NxClient_HdcpLevel_eMax] = {"off","optional","mandatory"};
+ static const char *g_hdcpSelectStr[NxClient_HdcpVersion_eMax] = {"auto", "hdcp1x", "hdcp22type0", "hdcp22"};
+ static const char *g_nxserver_hdcp_str[nxserver_hdcp_max] = {
+@@ -2165,6 +2326,9 @@
+     NEXUS_HdmiOutputHdcpStatus hdcpStatus;
+     enum nxserver_hdcp_state curr_version_state = session->hdcp.version_state;
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    NEXUS_DisplaySettings displaySettings;
++#endif
+ 
+     if (!session->nxclient.displaySettings.hdmiPreferences.enabled) return;
+     if (!session->hdmiOutput) return;
+@@ -2180,6 +2344,14 @@
+         /* find highest hdcp level among all clients */
+         curr_hdcp_level = session->server->settings.hdcp.alwaysLevel;
+         for (client = BLST_D_FIRST(&session->server->clients); client; client = BLST_D_NEXT(client, link)) {
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++            if (HdcpKeyReady)
++                client->hdcp_level=NxClient_HdcpLevel_eMandatory;
++            else {
++                BDBG_LOG(("nxserver_check_hdcp: HDCP keys are not ready yet!"));
++                client->hdcp_level=NxClient_HdcpLevel_eNone;
++            }
++#endif
+             if (client->hdcp_level > curr_hdcp_level) {
+                 curr_hdcp_level = client->hdcp_level;
+             }
+@@ -2190,6 +2362,14 @@
+ 
+     /* Skip, if no hdmi receiver available */
+     rc = NEXUS_HdmiOutput_GetStatus(session->hdmiOutput, &hdmiStatus);
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    BKNI_AcquireMutex(nxserverHdcpStatus_lock);
++    if(!rc)
++        BKNI_Memcpy(&nxserverHdmiStatus,&hdmiStatus,sizeof(NEXUS_HdmiOutputStatus));
++    else
++        nxserverHdmiStatus.preferredVideoFormat = NEXUS_VideoFormat_eMax;
++    BKNI_ReleaseMutex(nxserverHdcpStatus_lock);
++#endif
+     if (rc) { BERR_TRACE(rc); goto done; }
+     if (!hdmiStatus.rxPowered) {
+         BDBG_MSG(("hdmiStatus.rxPowered == 0, do nothing"));
+@@ -2301,6 +2481,16 @@
+     }
+ 
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    BKNI_AcquireMutex(nxserverHdcpStatus_lock);
++    if(!rc)
++        BKNI_Memcpy(&nxserverHdcpStatus,&hdcpStatus, sizeof(NEXUS_HdmiOutputHdcpStatus));
++    else
++        nxserverHdcpStatus.hdcpError = NEXUS_HdmiOutputHdcpError_eMax;
++    BKNI_ReleaseMutex(nxserverHdcpStatus_lock);
++#endif
++
++
+     if ((session->hdcp.version_state == nxserver_hdcp_success) && (!is_hdcp_start_complete(&hdcpStatus))) {
+         session->hdcp.version_state = nxserver_hdcp_begin;
+     }
+@@ -2442,6 +2632,27 @@
+     if (curr_version_state != session->hdcp.version_state) {
+         BDBG_LOG(("nxserver_check_hdcp: *** (%s --> %s)", g_nxserver_hdcp_str[curr_version_state], g_nxserver_hdcp_str[session->hdcp.version_state]));
+         if (session->hdcp.version_state == nxserver_hdcp_success) {
++	 #if COMCAST_RDK_SPECIFIC_CHANGE || 1
++            s_numHdcpRetry = 0;
++            bHdcpI2cNoAck = false;
++            bHdcpFailedAfterMaxTrials = false;
++
++            if(hdcp_poll_thread_id)
++            {
++               BDBG_LOG(("nxserver_check_hdcp: destroy the hdcp poll thread \n"));
++               BKNI_SetEvent(hdcp_poll_stop_event);
++               NEXUS_Thread_Destroy(hdcp_poll_thread_id);
++               BKNI_DestroyEvent(hdcp_poll_stop_event);
++               hdcp_poll_stop_event = NULL;
++               hdcp_poll_thread_id = NULL;
++           }
++           NEXUS_Display_GetSettings(session->display[0].display,&displaySettings);
++           if(displaySettings.background != 0xff000000)
++           {
++           displaySettings.background = 0xff000000;
++           NEXUS_Display_SetSettings(session->display[0].display,&displaySettings);
++           }
++	 #endif
+             BDBG_LOG(("HDCP authentication successful"));
+             session->hdcp.lastHdcpError = NEXUS_HdmiOutputHdcpError_eSuccess;
+         }
+@@ -2458,6 +2669,24 @@
+     struct b_session *session = pParam;
+     int rc;
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    bHdcpFailedAfterMaxTrials = false;
++    if(!bRetryDisplayReconnect)
++       s_numHdcpRetry = 0;
++
++    if(bRetryingOnTVOFF)
++       s_numHdcpRetry = 0;
++
++    if(hdcp_poll_thread_id)
++    {
++       BDBG_LOG(("hotplug_callback_locked: destroy the hdcp poll thread \n"));
++       BKNI_SetEvent(hdcp_poll_stop_event);
++       NEXUS_Thread_Destroy(hdcp_poll_thread_id);
++       BKNI_DestroyEvent(hdcp_poll_stop_event);
++       hdcp_poll_stop_event = NULL;
++       hdcp_poll_thread_id = NULL;
++    }
++#endif
+     if (!session->hdmiOutput) {
+         return;
+     }
+@@ -2465,7 +2694,13 @@
+     BSTD_UNUSED(iParam);
+     session->callbackStatus.hdmiOutputHotplug++;
+     rc = NEXUS_HdmiOutput_GetStatus(session->hdmiOutput, &status);
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++        BDBG_LOG(("HDMI HotPlug: %s", (status.connected) ? "DEVICE CONNECTED!!" : "DEVICE REMOVED!!"));
++#endif
+     if (rc!=NEXUS_SUCCESS) {
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++        BDBG_LOG(("hotplug_callback_locked: NEXUS_HdmiOutput_GetStatus failed\n"));
++#endif
+         return;
+     }
+ 
+@@ -2519,6 +2754,158 @@
+     session->hdcp.version_state = nxserver_hdcp_begin;
+     nxserver_check_hdcp(session);
+ }
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++static void nxserverlib_hdcp_poll_thread(void *context)
++{
++    struct b_session *session = (struct b_session *)context;
++    nxserver_t server = session->server;
++    NEXUS_HdmiOutputHdcpStatus hdcpStatus;
++    int rc;
++    NEXUS_HdmiOutputStatus status;
++
++
++    if (!session->hdmiOutput) {
++          BDBG_ERR(("nxserverlib_hdcp_poll_thread:hdmiOutput not valid. return"));
++          return;
++    }
++    while(1)
++    {
++        if(s_numHdcpRetry < HDCP_RETRY_NUM_MAX)
++        {
++             BDBG_LOG(("nxserverlib_hdcp_poll_thread: retrials are not max, exit"));
++             return;
++        }
++        rc = NEXUS_HdmiOutput_GetStatus(session->hdmiOutput, &status);
++    	if(rc || (!status.connected) || !(status.rxPowered))
++    	{
++    	   BDBG_LOG(("nxserverlib_hdcp_poll_thread: Exit, rc=%d,connected=%d,powered=%d",rc,status.connected,status.rxPowered));
++    	   return;
++    	}
++        BDBG_LOG(("nxserverlib_hdcp_poll_thread: Wait 10sec and check HDCP"));
++        if(BKNI_WaitForEvent(hdcp_poll_stop_event, 10000) != NEXUS_TIMEOUT)
++              {
++                   BDBG_LOG(("nxserverlib_hdcp_poll_thread: Received event to exit"));
++                   return;
++              }
++              nxserver_check_hdcp(session);
++    	}
++}
++static void nxserverlib_hdcp_reconnect_thread(void *context)
++{
++    struct b_session *session = (struct b_session *)context;
++    nxserver_t server = session->server;
++    NEXUS_HdmiOutputHdcpStatus hdcpStatus;
++    int rc;
++    NEXUS_HdmiOutputStatus status;
++
++	bRetryDisplayReconnect = true;
++    BDBG_LOG(("nxserverlib_hdcp_reconnect_thread:  Remove display..\n"));
++    NEXUS_Display_RemoveOutput(session->display[0].display, NEXUS_HdmiOutput_GetVideoConnector(session->hdmiOutput));
++    BKNI_Sleep(1000);
++    BDBG_LOG(("nxserverlib_hdcp_reconnect_thread:  Add display..\n"));
++    NEXUS_Display_AddOutput(session->display[0].display, NEXUS_HdmiOutput_GetVideoConnector(session->hdmiOutput));
++    s_numHdcpRetry++;
++	bRetryDisplayReconnect = false;
++}
++
++static void reschedule_hdcp(struct b_session *session)
++{
++     NEXUS_DisplaySettings displaySettings;
++     NEXUS_Error rc;
++     NEXUS_HdmiOutputTmdsSignalSettings tmdsSettings;
++
++     bRetryDisplayReconnect = false;
++     if(s_numHdcpRetry == 1 || s_numHdcpRetry == HDCP_RETRY_NUM_MAX)
++     {
++         if(hdcp_reconnect_thread_id)
++         {
++             BDBG_LOG(("reschedule_hdcp: hdcp_reconnect_thread is still working on \n"));
++             nxserver_check_hdcp(session);
++             return;
++     	 }
++         NEXUS_HdmiOutput_DisableHdcpAuthentication(session->hdmiOutput);
++         BDBG_LOG(("reschedule_hdcp: DisableHdcpAuthentication\n"));
++         session->hdcp.version_state = nxserver_hdcp_not_pending;
++
++         BDBG_LOG(("reschedule_hdcp: Reconnecting display retrial = %d\n",s_numHdcpRetry+1));
++         hdcp_reconnect_thread_id = NEXUS_Thread_Create("hdcp_reconnect_thread", nxserverlib_hdcp_reconnect_thread, session, NULL);
++     }
++     else if(s_numHdcpRetry == HDCP_RETRY_NUM_MAX+1)
++     {
++         if(hdcp_reconnect_thread_id)
++         {
++              NEXUS_Thread_Destroy(hdcp_reconnect_thread_id);
++              hdcp_reconnect_thread_id = NULL;
++         }
++         enum nxserver_hdcp_state curr_version_state = session->hdcp.version_state;
++         BDBG_LOG(("HDCP Authentication failed for %d times. HDCP NON-COMPLAINT TV. Hang up!\n", HDCP_RETRY_NUM_MAX+1));
++         bHdcpFailedAfterMaxTrials = true;
++         session->hdcp.version_state = nxserver_hdcp_success;
++         nxserver_hdcp_mute(session);
++         s_numHdcpRetry++;
++
++         /* For all the nonRNG platforms, keep displaying the blue screen background */
++
++#ifdef NEXUS_SHOW_BLUE_SCREEN_AFTER_HDCP_FAIL
++         NEXUS_Display_GetSettings(session->display[0].display,&displaySettings);
++
++         if(displaySettings.background != 0xff0000ff)
++         {
++             displaySettings.background = 0xff0000ff;
++             NEXUS_Display_SetSettings(session->display[0].display,&displaySettings);
++         }
++         session->hdcp.version_state = curr_version_state;
++         BDBG_LOG(("HDCP all trials failed: Show the BLUE SCREEN and mute the AV\n"));
++         nxserver_hdcp_mute(session);
++#else
++         BDBG_LOG(("HDCP all trials failed: Un-mute HDMI-output to allow application to show the HDCP error screen\n"));
++#endif
++
++         if(bHdcpI2cNoAck)
++         {
++             if(hdcp_poll_thread_id)
++             {
++                 BDBG_LOG(("reschedule_hdcp: destroy the  hdcp poll thread \n"));
++                 BKNI_SetEvent(hdcp_poll_stop_event);
++                 NEXUS_Thread_Destroy(hdcp_poll_thread_id);
++                 BKNI_DestroyEvent(hdcp_poll_stop_event);
++                 hdcp_poll_thread_id = NULL;
++                 hdcp_poll_stop_event = NULL;
++              }
++              BDBG_LOG(("reschedule_hdcp: Create HDCP poll thread \n"));
++              BKNI_CreateEvent(&hdcp_poll_stop_event);
++              hdcp_poll_thread_id = NEXUS_Thread_Create("hdcp_poll_thread", nxserverlib_hdcp_poll_thread, session, NULL);
++         }
++     }
++     else if (s_numHdcpRetry < HDCP_RETRY_NUM_MAX)/* Try TDMS signals reset */
++     {
++        s_numHdcpRetry++;
++        if(hdcp_reconnect_thread_id)
++        {
++            NEXUS_Thread_Destroy(hdcp_reconnect_thread_id);
++            hdcp_reconnect_thread_id = NULL;
++        }
++   
++        BDBG_LOG(("reschedule_hdcp:   retrial = %d\n",s_numHdcpRetry));
++     #if 0
++        tmdsSettings.clock = false;
++        tmdsSettings.data = false;
++        rc = NEXUS_HdmiOutput_SetTmdsSignal(session->hdmiOutput,&tmdsSettings);
++        if(rc)
++           BDBG_LOG(("reschedule_hdcp: disabling TMDS signals failed \n"));
++        BKNI_Sleep(500);
++        tmdsSettings.clock = true;
++        tmdsSettings.data = true;
++        rc = NEXUS_HdmiOutput_SetTmdsSignal(session->hdmiOutput,&tmdsSettings);
++        if(rc)
++            BDBG_LOG(("reschedule_hdcp: enabling TMDS signals failed \n"));
++     #endif
++        BKNI_Sleep(HDCP_RETRY_INTERVAL);
++        nxserver_check_hdcp(session);
++    }
++
++}
++#endif
+ 
+ static void hotplug_callback(void *pParam, int iParam)
+ {
+@@ -2613,7 +3000,21 @@
+     if (!session->hdcp.level) goto done;
+     if (session->hdcp.version_state == nxserver_hdcp_not_pending) goto done;
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    if((session->hdcp.version_state == nxserver_hdcp_pending_start_retry)&& s_numHdcpRetry && !bRetryDisplayReconnect)
++    {
++	nxserver_hdcp_mute(session);
++        reschedule_hdcp(session);
++    }
++    else
++    {
++        if(!s_numHdcpRetry)
++            s_numHdcpRetry++;
++        nxserver_check_hdcp(session);
++    }
++#else
+     nxserver_check_hdcp(session);
++#endif
+ done:
+     BKNI_ReleaseMutex(server->settings.lock);
+ }
+@@ -2986,6 +3387,9 @@
+     settings->transcodeSettings.mcpb = true;
+ #endif
+ #endif
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    settings->chromakey = false;
++#endif
+     settings->fbsize.width = 1920;
+     settings->fbsize.height = 1080;
+     for (i=0;i<NXCLIENT_MAX_SESSIONS;i++) {
+@@ -3061,6 +3465,11 @@
+ #endif
+     settings->native_3d = true;
+     settings->standby_timeout = 10;
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    settings->smooth_scaling = false;
++    settings->disable_svcmvc_sec_video = false;
++#endif    
++	
+     settings->grab = true;
+     settings->thermal.thermal_config_file = "nxclient/bcool.cfg";
+     settings->thermal.overTempReset = 90;
+@@ -3261,7 +3670,11 @@
+         if (rc) BERR_TRACE(rc); /* keep going */
+     }
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    nxserver_clear_hdcpkeys(session);
++#else
+     nxserver_load_hdcpkey_files(session);
++#endif
+     nxserverlib_dynrng_p_session_initialized(session);
+ }
+ #else
+@@ -3566,6 +3979,19 @@
+         if (server->settings.framebuffers) {
+             surface_compositor_settings.display[0].framebuffer.number = server->settings.framebuffers;
+         }
++
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    if (server->settings.chromakey) {
++        surface_compositor_settings.display[0].graphicsSettings.chromakeyEnabled  = true;
++        surface_compositor_settings.display[0].graphicsSettings.lowerChromakey  = 0xff000000;
++        surface_compositor_settings.display[0].graphicsSettings.upperChromakey  = 0xff080808;
++        BDBG_WRN(("enabling chromakey 0xff000000-0xff080808"));
++    }
++       nxserverHdcpStatus.hdcpState = NEXUS_HdmiOutputHdcpState_eUnpowered;
++       nxserverHdcpStatus.hdcpError = NEXUS_HdmiOutputHdcpError_eMax;
++       nxserverHdmiStatus.preferredVideoFormat = NEXUS_VideoFormat_eMax;
++#endif
++		
+         rc = NEXUS_SurfaceCompositor_SetSettings(session->surfaceCompositor, &surface_compositor_settings);
+         BDBG_ASSERT(!rc);
+         if(server->settings.cursor) {
+@@ -3746,6 +4172,9 @@
+     nxserver_t server;
+     unsigned i;
+     unsigned sd_count = 0;
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    B_ThreadSettings settingsThread;
++#endif
+ 
+     BDBG_CASSERT(NEXUS_SURFACE_COMPOSITOR_MAX_DISPLAYS == NXCLIENT_MAX_DISPLAYS);
+     server = BKNI_Malloc(sizeof(*server));
+@@ -3776,6 +4205,9 @@
+         rc = audio_init(server);
+         if (rc) {goto error_audio_init;}
+     }
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    BKNI_CreateMutex(&nxserverHdcpStatus_lock);
++#endif
+ 
+     if (server->display.cap.display[0].numVideoWindows == 0 || server->platformCap.display[0].encoder) {
+         BDBG_WRN(("******************************************************************************************"));
+@@ -3822,6 +4254,25 @@
+     }
+ 
+     g_server = server;
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    /* for HDCP authentication*/
++    B_Os_Init();
++
++    _lock = B_Mutex_Create(NULL);
++    BDBG_ASSERT(_lock);
++
++    _scheduler = B_Scheduler_Create(NULL);
++    BDBG_ASSERT(_scheduler);
++
++    /* create thread to run scheduler */
++    B_Thread_GetDefaultSettings(&settingsThread);
++    _schedulerThread = B_Thread_Create("Scheduler",
++                                          (B_ThreadFunc)B_Scheduler_Run,
++                                          _scheduler,
++                                          &settingsThread);
++
++    BDBG_ASSERT(NULL != _schedulerThread);
++#endif	
+     return server;
+ 
+ error_session:
+@@ -3856,6 +4307,27 @@
+     if it's an untrusted client, handle verification may fail the call. but a trusted client bypasses the
+     check and could kill the server-> */
+     NEXUS_Platform_StopServer();
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    if (_timerID) {
++        B_Scheduler_CancelTimer(_scheduler, _timerID);
++        B_Scheduler_Stop(_scheduler);
++    }
++
++    if (_scheduler) {
++        B_Scheduler_Destroy(_scheduler);
++        _scheduler = NULL;
++    }
++
++    if (_schedulerThread) {
++        B_Thread_Destroy(_schedulerThread);
++        _schedulerThread = NULL;
++    }
++    if (_lock) {
++        B_Mutex_Destroy(_lock);
++        _lock = NULL;
++    }
++    BKNI_DestroyMutex(nxserverHdcpStatus_lock);
++#endif
+ 
+     nxserverlib_p_clear_video_cache();
+ 
+@@ -5474,6 +5946,300 @@
+     return 0;
+ }
+ 
++
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++NEXUS_Error NxClient_P_GetRfmSettings(nxclient_t client, NxClient_RfmSetttings *rfmSettings)
++{
++    NEXUS_Error rc = NEXUS_SUCCESS;
++#if NEXUS_NUM_RFM_OUTPUTS
++    NEXUS_PlatformConfiguration platformConfig;
++    NEXUS_Platform_GetConfiguration(&platformConfig);
++    NEXUS_Rfm_GetSettings(platformConfig.outputs.rfm[0], &rfmSettings->settings);
++#else
++    BSTD_UNUSED(rfmSettings);
++#endif
++    BSTD_UNUSED(client);
++    return rc;
++}
++
++NEXUS_Error bserver_set_rfm_settings(nxclient_t client, const NxClient_RfmSetttings *rfmSettings)
++{
++    NEXUS_Error rc = NEXUS_SUCCESS;
++#if NEXUS_NUM_RFM_OUTPUTS
++    NEXUS_PlatformConfiguration platformConfig;
++    NEXUS_Platform_GetConfiguration(&platformConfig);
++    NEXUS_Rfm_SetSettings(platformConfig.outputs.rfm[0], &rfmSettings->settings);
++    client->session->rfmSettings = rfmSettings->settings;
++#else
++    BSTD_UNUSED(rfmSettings);
++#endif
++    return rc;
++}
++
++NEXUS_Error NxClient_P_SetRfmSettings(nxclient_t client, const NxClient_RfmSetttings *rfmSettings)
++{
++    return bserver_set_rfm_settings(client, rfmSettings);
++}
++
++
++NEXUS_Error NxClient_P_ConnectVideoOutputs(nxclient_t client)
++{
++    NEXUS_Error rc=0;
++
++    BDBG_ERR(("NxClient_P_ConnectVideoOutputs \n"));
++#if NEXUS_NUM_COMPONENT_OUTPUTS
++    if (client->server->platformConfig.outputs.component[0]) {
++        NEXUS_Display_AddOutput(client->session->display[0].display, NEXUS_ComponentOutput_GetConnector(client->server->platformConfig.outputs.component[0]));
++    }
++#endif
++#if NEXUS_NUM_COMPOSITE_OUTPUTS
++    if(client->session->display[1].display && client->server->platformConfig.outputs.composite[0]) {
++        NEXUS_Display_AddOutput(client->session->display[1].display, NEXUS_CompositeOutput_GetConnector(client->server->platformConfig.outputs.composite[0]));
++    }
++#endif
++#if NEXUS_NUM_SVIDEO_OUTPUTS
++	fflush(stdout);
++    if(client->session->display[1].display && client->server->platformConfig.outputs.svideo[0]) {
++        NEXUS_Display_AddOutput(client->session->display[1].display, NEXUS_SvideoOutput_GetConnector(client->server->platformConfig.outputs.svideo[0]));
++    }
++#endif
++#if NEXUS_HAS_RFM && NEXUS_NUM_RFM_OUTPUTS
++    if (client->session->display[1].display && client->server->platformConfig.outputs.rfm[0]) {
++        NEXUS_Display_AddOutput(client->session->display[1].display, NEXUS_Rfm_GetVideoConnector(client->server->platformConfig.outputs.rfm[0]));
++    }
++#endif
++#if NEXUS_NUM_HDMI_OUTPUTS
++    if (client->server->platformConfig.outputs.hdmi[0]) {
++        NEXUS_Display_AddOutput(client->session->display[0].display, NEXUS_HdmiOutput_GetVideoConnector(client->server->platformConfig.outputs.hdmi[0]));
++    }
++#endif
++
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    bVideoOutputConnected = true;
++    nxserver_check_hdcp(client->session);
++
++#endif
++
++    return rc;
++}
++
++void NxClient_P_DisconnectVideoOutputs(nxclient_t client)
++{
++    BDBG_ERR(("NxClient_P_DisconnectVideoOutputs \n"));
++    if (client->session->display[0].display)
++    {
++        NEXUS_Display_RemoveAllOutputs(client->session->display[0].display);
++    }
++
++    if (client->session->display[1].display)
++    {
++        NEXUS_Display_RemoveAllOutputs(client->session->display[1].display);
++    }
++
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    bVideoOutputConnected = false;
++#endif
++
++}
++
++NEXUS_Error NxClient_P_GetHdmiStatus(nxclient_t client, NxClient_HdmiOutputStatus *pStatus)
++{
++    NEXUS_PlatformConfiguration platformConfig;
++    NEXUS_Error rc;
++
++    BSTD_UNUSED(client);
++
++    #if COMCAST_RDK_SPECIFIC_CHANGE || 1 
++      BKNI_AcquireMutex(nxserverHdcpStatus_lock);
++      BKNI_Memcpy(&pStatus->status,&nxserverHdmiStatus, sizeof(NEXUS_HdmiOutputStatus));
++      if(nxserverHdmiStatus.preferredVideoFormat == NEXUS_VideoFormat_eMax)
++           rc = NEXUS_UNKNOWN;
++      else
++           rc = NEXUS_SUCCESS;
++      BKNI_ReleaseMutex(nxserverHdcpStatus_lock);
++    #else
++    NEXUS_Platform_GetConfiguration(&platformConfig);
++    rc = NEXUS_HdmiOutput_GetStatus(platformConfig.outputs.hdmi[0], &pStatus->status);
++    #endif
++	
++    return rc;
++}
++
++
++NEXUS_Error NxClient_P_MuteHdmiOutput(nxclient_t client, bool mute)
++{
++    NEXUS_DisplaySettings displaySettings;
++
++    BSTD_UNUSED(client);
++    BDBG_LOG(("NxClient_P_MuteHdmiOutput mute = %d",mute));
++
++    BKNI_AcquireMutex(nxserverHdcpStatus_lock);
++    bClientHdcpMute = mute;
++    BKNI_ReleaseMutex(nxserverHdcpStatus_lock);
++
++    if(bClientHdcpMute)
++    {
++	   NEXUS_Display_GetSettings(client->session->display[0].display,&displaySettings);
++	   if(displaySettings.background != 0xff000000)
++	   {
++	   displaySettings.background = 0xff000000;
++	   NEXUS_Display_SetSettings(client->session->display[0].display,&displaySettings);
++    }
++    }
++    nxserver_hdcp_mute(client->session);
++ 
++    return 0;
++}
++
++
++NEXUS_Error NxClient_P_GetHdcpStatus(nxclient_t client, NxClient_HdmiOutputHdcpStatus *pStatus)
++{
++    NEXUS_PlatformConfiguration platformConfig;
++    NEXUS_Error rc = NEXUS_SUCCESS;
++
++    BSTD_UNUSED(client);
++    NEXUS_Platform_GetConfiguration(&platformConfig);
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1 
++    pStatus->bHdcpFailedAfterMaxTrials = bHdcpFailedAfterMaxTrials;
++    BKNI_AcquireMutex(nxserverHdcpStatus_lock);
++    BKNI_Memcpy(&pStatus->status,&nxserverHdcpStatus, sizeof(NEXUS_HdmiOutputHdcpStatus));
++    if(nxserverHdcpStatus.hdcpError != NEXUS_HdmiOutputHdcpError_eSuccess)
++        rc = NEXUS_UNKNOWN;
++    BKNI_ReleaseMutex(nxserverHdcpStatus_lock);
++#else
++    rc = NEXUS_HdmiOutput_GetHdcpStatus(platformConfig.outputs.hdmi[0], &pStatus->status);
++#endif
++
++    return rc;
++}
++
++NEXUS_Error NxClient_P_GetBasicEdidData(nxclient_t client, NxClient_HdmiBasicEdidData *pData)
++{
++    NEXUS_PlatformConfiguration platformConfig;
++    NEXUS_Error rc;
++
++    BSTD_UNUSED(client);
++    NEXUS_Platform_GetConfiguration(&platformConfig);
++    rc = NEXUS_HdmiOutput_GetBasicEdidData(platformConfig.outputs.hdmi[0], &pData->data);
++
++    return rc;
++}   
++
++NEXUS_Error NxClient_P_GetHdmiEdidBlock(nxclient_t client, unsigned int block_num, NxClient_HdmiEdidBlock *pData)
++{
++    NEXUS_PlatformConfiguration platformConfig;
++    NEXUS_Error rc;
++
++    BSTD_UNUSED(client);
++    NEXUS_Platform_GetConfiguration(&platformConfig);
++    rc = NEXUS_HdmiOutput_GetEdidBlock(platformConfig.outputs.hdmi[0],block_num,&pData->data);
++
++    return rc;
++}
++
++
++void NxClient_P_IsHdcpEnabled(nxclient_t client, bool  *pbHdcpKeyReady)
++{
++    *pbHdcpKeyReady = HdcpKeyReady;
++}
++
++
++NEXUS_Error NxClient_P_EnableHdmiHdcp(nxclient_t client, NxClient_HdcpInfo *pHdcpInfo, NEXUS_MemoryBlockHandle block)
++{
++    NEXUS_Error rc = NEXUS_SUCCESS;
++#if NEXUS_HAS_HDMI_OUTPUT
++    NEXUS_HdmiOutputStatus status;
++    void *ptr;
++
++    bHdcpFailedAfterMaxTrials = false;
++    if ( false == HdcpKeyReady)
++    {
++        BDBG_LOG(("NxClient_P_EnableHdmiHdcp: initialize HDCP keys \n"));
++        HdcpKeyReady = true;
++
++        /* Copy Hdcp1.x keys */
++        client->session->hdcpKeys.hdcp1x.buffer = BKNI_Malloc(sizeof(pHdcpInfo->data));
++        client->session->hdcpKeys.hdcp1x.size = sizeof(pHdcpInfo->data);
++        if (!client->session->hdcpKeys.hdcp1x.buffer) 
++        {
++             rc = BERR_TRACE(NEXUS_OUT_OF_SYSTEM_MEMORY);
++             BDBG_LOG(("NxClient_P_EnableHdmiHdcp: Error loading Hdcp1x keys.Out Of memory \n"));
++             return rc;
++        }
++        BKNI_Memcpy(client->session->hdcpKeys.hdcp1x.buffer, pHdcpInfo->data, sizeof(pHdcpInfo->data));
++
++        /* Copy Hdcp2.x keys */
++        if(pHdcpInfo->hdcp2x.size)
++        {
++             client->session->hdcpKeys.hdcp2x.size = pHdcpInfo->hdcp2x.size;
++             client->session->hdcpKeys.hdcp2x.buffer = BKNI_Malloc(client->session->hdcpKeys.hdcp2x.size);
++             if (!client->session->hdcpKeys.hdcp2x.buffer) 
++        {
++                rc = BERR_TRACE(NEXUS_OUT_OF_SYSTEM_MEMORY);
++                BDBG_ERR(("NxClient_P_EnableHdmiHdcp: Error loading Hdcp22 keys.Out Of memory \n"));
++                return BERR_TRACE(NEXUS_OUT_OF_SYSTEM_MEMORY);
++             }
++
++            rc = NEXUS_MemoryBlock_Lock(block, &ptr);
++            if (rc) {
++                rc = BERR_TRACE(rc);
++                return rc;
++            }
++
++             BKNI_Memcpy(client->session->hdcpKeys.hdcp2x.buffer, ptr, pHdcpInfo->hdcp2x.size);
++             NEXUS_MemoryBlock_Unlock(block);
++        }
++
++        /* initalize HDCP settings, keys, etc. */
++        initializeHdmiOutputHdcpSettings(client->session, NxClient_HdcpVersion_eAuto);
++    }
++    rc = NEXUS_HdmiOutput_GetStatus(client->session->hdmiOutput, &status);
++    if (rc!=NEXUS_SUCCESS) 
++    {
++        BDBG_LOG(("NxClient_P_EnableHdmiHdcp: HdmiOutput get status error \n"));
++        return rc;
++    }
++    if(status.connected) 
++    {
++        s_numHdcpRetry = 0;
++        nxserver_check_hdcp(client->session);
++    }
++    else
++       BDBG_LOG(("NxClient_P_EnableHdmiHdcp: HdmiOutput status not connected \n"));
++#endif
++    return rc;
++}
++
++NEXUS_Error NxClient_P_GetComponentStatus(nxclient_t client, NxClient_ComponentStatus *pStatus)
++{
++    NEXUS_Error rc = NEXUS_SUCCESS;
++#if NEXUS_NUM_COMPONENT_OUTPUTS
++    NEXUS_DisplaySettings DisplaySettings;
++    NEXUS_VideoOutputSettings VideoOutputSettings;
++    NEXUS_ComponentOutputSettings ComponentSettings;
++
++    NEXUS_Display_GetSettings(client->session->display[0].display, &DisplaySettings);
++    NEXUS_VideoOutput_GetSettings(NEXUS_ComponentOutput_GetConnector(client->server->platformConfig.outputs.component[0]), &VideoOutputSettings );
++    NEXUS_ComponentOutput_GetSettings(client->server->platformConfig.outputs.component[0], &ComponentSettings);
++
++    pStatus->format = DisplaySettings.format;
++    pStatus->aspectRatio= DisplaySettings.aspectRatio;
++    if (VideoOutputSettings.mute > 1)
++      pStatus->mute = false;
++    else
++      pStatus->mute = VideoOutputSettings.mute;
++    pStatus->mpaaDecimationEnabled = ComponentSettings.mpaaDecimationEnabled;	
++    BDBG_MSG((" mpaaDecimationEnabled %d format %d mute %d aspectRatio %d\n",pStatus->mpaaDecimationEnabled, DisplaySettings.format, VideoOutputSettings.mute,DisplaySettings.aspectRatio));
++#else
++    BSTD_UNUSED(client);
++    BSTD_UNUSED(pStatus);
++#endif
++    return rc;
++
++}
++
++#endif
++
+ #if NEXUS_HAS_ASTM
+ void nxserverlib_get_astm_settings(NEXUS_AstmSettings *pSettings)
+ {
+diff -auNrd a/nexus/nxclient/server/nxserverlib.h b/nexus/nxclient/server/nxserverlib.h
+--- a/nexus/nxclient/server/nxserverlib.h	2019-09-24 17:35:27.000000000 -0400
++++ b/nexus/nxclient/server/nxserverlib.h	2019-09-26 15:52:33.205659858 -0400
+@@ -109,6 +109,10 @@
+     NEXUS_PixelFormat pixelFormat; /* pixelFormat for the main (HD) display */
+     bool compressionBounceBuffer;
+     bool native_3d;
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    bool smooth_scaling; /* only applies to main video window */
++    bool disable_svcmvc_sec_video;
++#endif    
+     NEXUS_ClientMode client_mode;
+     NEXUS_Certificate certificate; /* compared to NxClient_JoinSettings.certificate */
+     enum {
+@@ -119,6 +123,9 @@
+     struct {
+         bool mcpb;
+     } transcodeSettings;
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    bool chromakey;
++#endif    
+     NEXUS_MemoryConfigurationSettings memConfigSettings; /* pass in memconfig used to init system */
+     enum nxserverlib_svp_type svp; /* Secure Video Path: settings */
+     bool growHeap; /* NXCLIENT_DYNAMIC_HEAP will use CMA */
+@@ -479,6 +486,24 @@
+ bool nxserver_is_standby(nxserver_t server);
+ bool nxserver_bcool(void);
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++NEXUS_Error NxClient_P_SetRfmSettings(nxclient_t client, const NxClient_RfmSetttings *rfmSettings);
++NEXUS_Error NxClient_P_GetRfmSettings(nxclient_t client, NxClient_RfmSetttings *rfmSettings);
++
++NEXUS_Error NxClient_P_ConnectVideoOutputs(nxclient_t client);
++void        NxClient_P_DisconnectVideoOutputs(nxclient_t client);
++
++NEXUS_Error NxClient_P_GetHdmiStatus(nxclient_t client, NxClient_HdmiOutputStatus *pStatus);
++NEXUS_Error NxClient_P_GetHdcpStatus(nxclient_t client, NxClient_HdmiOutputHdcpStatus *pStatus);
++NEXUS_Error NxClient_P_GetBasicEdidData(nxclient_t client, NxClient_HdmiBasicEdidData *pData);
++NEXUS_Error NxClient_P_GetHdmiEdidBlock(nxclient_t client, unsigned int block_num, NxClient_HdmiEdidBlock *pData);
++NEXUS_Error NxClient_P_EnableHdmiHdcp(nxclient_t client, NxClient_HdcpInfo *pHdcpInfo, NEXUS_MemoryBlockHandle block);
++NEXUS_Error NxClient_P_GetComponentStatus(nxclient_t client, NxClient_ComponentStatus *pStatus);
++
++NEXUS_Error NxClient_P_MuteHdmiOutput(nxclient_t client, bool mute); 
++void NxClient_P_IsHdcpEnabled(nxclient_t client, bool  *pbHdcpKeyReady);
++
++#endif
+ #if NEXUS_HAS_IR_INPUT
+ NEXUS_IrInputHandle nxserver_get_ir_input(nxserver_t server, unsigned session, unsigned input);
+ #endif
+diff -auNrd a/nexus/nxclient/server/nxserverlib_impl.h b/nexus/nxclient/server/nxserverlib_impl.h
+--- a/nexus/nxclient/server/nxserverlib_impl.h	2019-09-24 17:35:27.000000000 -0400
++++ b/nexus/nxclient/server/nxserverlib_impl.h	2019-09-26 15:52:33.205659858 -0400
+@@ -389,6 +389,11 @@
+         } lastCodeReceived;
+     } input;
+ #endif
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++#if NEXUS_HAS_RFM
++NEXUS_RfmSettings rfmSettings;
++#endif
++#endif
+ };
+ 
+ struct b_stc_caps {
+diff -auNrd a/nexus/nxclient/server/nxserverlib_ipc.c b/nexus/nxclient/server/nxserverlib_ipc.c
+--- a/nexus/nxclient/server/nxserverlib_ipc.c	2019-09-24 17:35:27.000000000 -0400
++++ b/nexus/nxclient/server/nxserverlib_ipc.c	2019-09-26 15:52:33.205659858 -0400
+@@ -659,6 +659,80 @@
+     return NxClient_P_GetStandbyStatus(_client->client, pStatus);
+ }
+ 
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++int nxclient_p_get_rfm_settings(nxclient_ipc_t _client, NxClient_RfmSetttings *pSettings)
++{
++    BSTD_UNUSED(_client);
++    return NxClient_P_GetRfmSettings(_client->client, pSettings);
++}
++
++int nxclient_p_set_rfm_settings(nxclient_ipc_t _client, const NxClient_RfmSetttings *pSettings)
++{
++    return NxClient_P_SetRfmSettings(_client->client, pSettings);
++}
++
++int nxclient_p_connect_video_outputs(nxclient_ipc_t _client)
++{
++    BSTD_UNUSED(_client);
++    return NxClient_P_ConnectVideoOutputs(_client->client);
++}
++
++void nxclient_p_disconnect_video_outputs(nxclient_ipc_t _client)
++{
++    BSTD_UNUSED(_client);
++    NxClient_P_DisconnectVideoOutputs(_client->client);
++}
++
++int nxclient_p_get_hdmi_status(nxclient_ipc_t _client, NxClient_HdmiOutputStatus *pStatus)
++{
++    BSTD_UNUSED(_client);
++    return NxClient_P_GetHdmiStatus(_client->client, pStatus);
++}
++
++int nxclient_p_get_hdcp_status(nxclient_ipc_t _client, NxClient_HdmiOutputHdcpStatus *pStatus)
++{
++    BSTD_UNUSED(_client);
++    return NxClient_P_GetHdcpStatus(_client->client, pStatus);
++}
++
++int nxclient_p_get_basic_edid_data(nxclient_ipc_t _client, NxClient_HdmiBasicEdidData *pData)
++{
++    BSTD_UNUSED(_client);
++    return NxClient_P_GetBasicEdidData(_client->client, pData);
++}
++
++int nxclient_p_get_hdmi_edid_block(nxclient_ipc_t _client, unsigned int block_num, NxClient_HdmiEdidBlock *pData)
++{
++    BSTD_UNUSED(_client);
++    return NxClient_P_GetHdmiEdidBlock(_client->client, block_num, pData); 
++}
++
++int nxclient_p_enable_hdmi_hdcp(nxclient_ipc_t _client, NxClient_HdcpInfo hdcpInfo, NEXUS_MemoryBlockHandle block)
++{
++    BSTD_UNUSED(_client);
++    return NxClient_P_EnableHdmiHdcp(_client->client, &hdcpInfo, block);
++}
++int nxclient_p_get_component_status(nxclient_ipc_t _client, NxClient_ComponentStatus *pStatus)
++{
++    BSTD_UNUSED(_client);
++	BDBG_MSG(("nxclient_p_get_component_status"));
++    return NxClient_P_GetComponentStatus(_client->client, pStatus); 
++}
++
++int nxclient_p_mute_hdmi_output(nxclient_ipc_t _client, bool mute)
++{
++    BSTD_UNUSED(_client);
++    BDBG_MSG(("nxclient_p_mute_hdmi_output"));
++    return NxClient_P_MuteHdmiOutput(_client->client, mute); 
++}
++void nxclient_p_is_hdcp_enabled(nxclient_ipc_t _client, bool  *pbHdcpKeyReady)
++{
++    BSTD_UNUSED(_client);
++    NxClient_P_IsHdcpEnabled(_client->client, pbHdcpKeyReady); 
++}
++
++#endif
++
+ int nxclient_p_set_standby_settings(nxclient_ipc_t _client, const NxClient_StandbySettings *pSettings)
+ {
+     return NxClient_P_SetStandbySettings(_client->client, pSettings);
+diff -auNrd a/nexus/nxclient/server/nxserverlib_video.c b/nexus/nxclient/server/nxserverlib_video.c
+--- a/nexus/nxclient/server/nxserverlib_video.c	2019-09-24 17:35:27.000000000 -0400
++++ b/nexus/nxclient/server/nxserverlib_video.c	2019-09-26 15:52:33.209660156 -0400
+@@ -918,6 +918,41 @@
+                     rc = BERR_TRACE(NEXUS_NOT_AVAILABLE);
+                     goto error;
+                 }
++
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++                        /* only enable smooth scaling on main video window and only if server setting is enabled */
++                        if ((session->server->settings.smooth_scaling) && (j==0) && (index==0)) {
++                            NEXUS_VideoWindowSettings windowSettings;
++                            NEXUS_VideoWindowScalerSettings scalerSettings;
++
++                            BDBG_LOG(("Enabling smooth source scaling on display 0 window 0\n"));
++
++                            /* configure main window for smooth source scaling */
++                            NEXUS_VideoWindow_GetSettings(session->display[j].window[index][0], &windowSettings);
++                            /* (1) Won't re-alloc buffers to meet source size changges and
++                            *     also put MADR/MCVP HW into bypass when not needed. */
++                            windowSettings.minimumSourceFormat = NEXUS_VideoFormat_e1080i;
++
++                            /* (2) Use fullscreen size buffer instead of PIP/PIG size to determine
++                            * allocation. */
++                            windowSettings.allocateFullScreen = true;
++
++                            /* (3) Not auto snapping to integer scaling factor. */
++                            windowSettings.scaleFactorRounding.enabled = true;
++                            windowSettings.scaleFactorRounding.verticalTolerance = 0;
++                            windowSettings.scaleFactorRounding.horizontalTolerance = 0;
++
++                            rc = NEXUS_VideoWindow_SetSettings(session->display[j].window[index][0], &windowSettings);
++
++                            /* (4) Fixed scaler -> capture vs capture -> scaler orienation to avoid
++                            *     reconfiguration of VNET (Video Network).  This require RTS
++                            *     and Usage analysis to make sure it supportted. */
++                            NEXUS_VideoWindow_GetScalerSettings(session->display[j].window[index][0], &scalerSettings);
++                            scalerSettings.bandwidthEquationParams.bias = NEXUS_ScalerCaptureBias_eScalerBeforeCapture;
++                            scalerSettings.bandwidthEquationParams.delta = 1*1000*1000;
++                            rc = NEXUS_VideoWindow_SetScalerSettings(session->display[j].window[index][0], &scalerSettings);
++                        }
++#endif
+                 if (j == 0 && index == 0) {
+                     NEXUS_VideoWindowSettings settings;
+                     /* by preferring synclock on main, if PIP is recreated first, it will be destroyed and
+diff -auNrd a/nexus/platforms/common/build/dbghooks.txt b/nexus/platforms/common/build/dbghooks.txt
+--- a/nexus/platforms/common/build/dbghooks.txt	1969-12-31 19:00:00.000000000 -0500
++++ b/nexus/platforms/common/build/dbghooks.txt	2019-09-26 15:52:33.209660156 -0400
+@@ -0,0 +1,25 @@
++NEXUS_VideoDecoder_Open
++NEXUS_VideoDecoder_Close
++NEXUS_VideoDecoder_Start
++NEXUS_AudioDecoder_Open
++NEXUS_AudioDecoder_Close
++NEXUS_AudioDecoder_Start
++NEXUS_TruVolume_Open
++NEXUS_TruVolume_Close
++NEXUS_StcChannel_Open
++NEXUS_StcChannel_Close
++NEXUS_Display_Open
++NEXUS_Display_Close
++NEXUS_Display_AddOutput
++NEXUS_Display_RemoveOutput
++NEXUS_Display_RemoveAllOutputs
++NEXUS_VideoWindow_Open
++NEXUS_VideoWindow_Close
++NEXUS_VideoWindow_AddInput
++NEXUS_VideoWindow_RemoveInput
++NEXUS_VideoWindow_RemoveAllInputs
++NEXUS_Recpump_Open
++NEXUS_Recpump_AddPidChannel
++NEXUS_Recpump_RemovePidChannel
++NEXUS_Recpump_RemoveAllPidChannels
++NEXUS_Recpump_Close
+diff -auNrd a/nexus/platforms/common/build/platform_app.inc b/nexus/platforms/common/build/platform_app.inc
+--- a/nexus/platforms/common/build/platform_app.inc	2019-09-24 17:35:27.000000000 -0400
++++ b/nexus/platforms/common/build/platform_app.inc	2019-09-26 15:52:33.209660156 -0400
+@@ -93,6 +93,10 @@
+ # Convert magnum includes into the same variable
+ NEXUS_APP_INCLUDE_PATHS += $(foreach module, $(MAGNUM_MODULES), $($(module)_INCLUDES))
+ NEXUS_APP_DEFINES += $(foreach module, $(MAGNUM_MODULES), $($(module)_DEFINES))
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++NEXUS_APP_DEFINES += RDK_USE_NXCLIENT
++endif
+ 
+ ifeq ($(filter FILE, ${NEXUS_MODULES}), FILE)
+ include $(BSEAV)/lib/bfile/bfile.inc
+diff -auNrd a/nexus/platforms/common/build/platform.inc b/nexus/platforms/common/build/platform.inc
+--- a/nexus/platforms/common/build/platform.inc	2019-09-24 17:35:27.000000000 -0400
++++ b/nexus/platforms/common/build/platform.inc	2019-09-26 15:52:33.209660156 -0400
+@@ -491,6 +491,18 @@
+ ifeq ($(BVDC_MANAGE_VIP), y)
+ NEXUS_PLATFORM_DEFINES += NEXUS_DISPLAY_VIP_SUPPORT=1
+ endif
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++##########################
++# XG2 COMMON DEFINES     #
++##########################
++
++# Jira SAM7429-70: COMCAST_PLATFORM_XG2 to be used in XG2 specific patch code
++ifeq ($(COMCAST_PLATFORM),XG2)
++NEXUS_PLATFORM_DEFINES += COMCAST_PLATFORM_XG2=1
++endif
++endif
++
+ 
+ ifeq ($(filter $(BSID_MJPEG_SUPPORT), y), y)
+ NEXUS_PLATFORM_DEFINES += NEXUS_NUM_SID_VIDEO_DECODERS=1
+diff -auNrd a/nexus/platforms/common/src/nexus_platform.c b/nexus/platforms/common/src/nexus_platform.c
+--- a/nexus/platforms/common/src/nexus_platform.c	2019-09-24 17:38:41.000000000 -0400
++++ b/nexus/platforms/common/src/nexus_platform.c	2019-09-26 15:52:33.209660156 -0400
+@@ -392,7 +392,24 @@
+     }
+ }
+ #endif
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++/* IMS# 595534:Show Comcast splash screen during NEXUS refsw_server initilization */
++#if NEXUS_HAS_FRONTEND
++void NEXUS_Platform_P_InitFrontend(void *context)
++{
++    NEXUS_Error errCode;
+ 
++    BSTD_UNUSED(context);
++    
++    BKNI_Sleep(200);
++	
++    errCode = NEXUS_Platform_InitFrontend();
++    if ( errCode!=BERR_SUCCESS ) {
++        BDBG_ERR(("Unable to init frontend. Allowing Nexus to still come up."));
++    }        
++}
++#endif
++#endif
+ #if NEXUS_HAS_AUDIO
+ static void NEXUS_Platform_P_InitAudio(void *context)
+ {
+@@ -557,6 +574,9 @@
+ #endif
+ #if NEXUS_HAS_FRONTEND
+         NEXUS_FrontendModuleSettings frontendSettings;
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++    NEXUS_ThreadHandle frontendThread;   
++#endif     
+ #endif
+ #if NEXUS_HAS_PLAYBACK
+         NEXUS_PlaybackModuleSettings playbackSettings;
+@@ -1723,9 +1743,17 @@
+ #if NEXUS_HAS_FRONTEND
+     if (g_NEXUS_platformSettings.openFrontend) {
+         BDBG_MSG((">FRONTEND CONFIG"));
++# if COMCAST_SPECIFIC_CHANGES || 1
++        /* IMS# 595534:Show Comcast splash screen during NEXUS refsw_server initilization */
++        state->frontendThread = NEXUS_Thread_Create("frontend_init", NEXUS_Platform_P_InitFrontend, NULL, NULL);
++        if (!state->frontendThread) {
++            errCode = BERR_TRACE(BERR_OUT_OF_SYSTEM_MEMORY);
++            goto err;
++#else
+         errCode = NEXUS_Platform_InitFrontend();
+         if ( errCode!=BERR_SUCCESS ) {
+             BDBG_ERR(("Unable to init frontend. Allowing Nexus to still come up."));
++#endif
+         }
+     }
+ #endif
+diff -auNrd a/nexus/platforms/common/src/nexus_platform_config.c b/nexus/platforms/common/src/nexus_platform_config.c
+--- a/nexus/platforms/common/src/nexus_platform_config.c	2019-09-24 17:35:27.000000000 -0400
++++ b/nexus/platforms/common/src/nexus_platform_config.c	2019-09-26 15:52:33.209660156 -0400
+@@ -188,6 +188,9 @@
+                     i2cSettings->softI2c = forceSoftI2c;
+                     #endif
+                     i2cSettings->clockRate = NEXUS_I2cClockRate_e100Khz;
++           #if COMCAST_RDK_SPECIFIC_CHANGE || 1 
++                    i2cSettings->use5v = true;
++           #endif
+                 }
+ 
+                 if(i2cSettings->softI2c == true){
+diff -auNrd a/nexus/platforms/common/src/nexus_platform_settings.c b/nexus/platforms/common/src/nexus_platform_settings.c
+--- a/nexus/platforms/common/src/nexus_platform_settings.c	2019-09-26 15:24:38.000000000 -0400
++++ b/nexus/platforms/common/src/nexus_platform_settings.c	2019-09-26 15:52:33.209660156 -0400
+@@ -156,6 +156,13 @@
+     pSettings->heap[NEXUS_MEMC0_MAIN_HEAP].heapType |= NEXUS_HEAP_TYPE_MAIN;
+     pSettings->heap[NEXUS_MEMC0_MAIN_HEAP].memcIndex = 0;
+     NEXUS_Platform_P_ApplyHeapStaticMapping(&pSettings->heap[NEXUS_MEMC0_MAIN_HEAP].memoryType, NEXUS_MEMORY_TYPE_DRIVER_UNCACHED|NEXUS_MEMORY_TYPE_DRIVER_CACHED|NEXUS_MEMORY_TYPE_APPLICATION_CACHED);
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++#if defined(NEXUS_MEMC0_3PARTY_DRIVER_HEAP)
++    pSettings->heap[NEXUS_MEMC0_3PARTY_DRIVER_HEAP].heapType |= NEXUS_HEAP_TYPE_3PARTY_DRIVER;
++    pSettings->heap[NEXUS_MEMC0_3PARTY_DRIVER_HEAP].memcIndex = 0;
++    pSettings->heap[NEXUS_MEMC0_3PARTY_DRIVER_HEAP].memoryType = NEXUS_MemoryType_eFull;
++#endif
++#endif
+     pSettings->heap[NEXUS_VIDEO_SECURE_HEAP].heapType |= NEXUS_HEAP_TYPE_COMPRESSED_RESTRICTED_REGION;
+     pSettings->heap[NEXUS_EXPORT_HEAP].heapType |= NEXUS_HEAP_TYPE_EXPORT_REGION;
+     pSettings->heap[NEXUS_CRRT_HEAP].heapType |= NEXUS_HEAP_TYPE_CRRT;

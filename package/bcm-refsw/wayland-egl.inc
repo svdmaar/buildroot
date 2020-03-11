@@ -72,9 +72,15 @@ ifeq ($(BCM_REFSW_PLATFORM_VC),vc5)
             $(INSTALL) -d -m 0755 $(STAGING_DIR)/usr/include/vcos/posix
             $(INSTALL) -d -m 0755 $(STAGING_DIR)/usr/include/vcos/gcc
 
-            $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/core/vcos/include/*.h $(STAGING_DIR)/usr/include/vcos/include
-            $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/core/vcos/posix/*.h $(STAGING_DIR)/usr/include/vcos/posix
-            $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/core/vcos/gcc/*.h $(STAGING_DIR)/usr/include/vcos/gcc
+            if [ $(shell expr $(BCM_REFSW_VERSION) \>= 19.2) = 1 ]; then \
+                $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/util/vcos/include/*.h $(STAGING_DIR)/usr/include/vcos/include; \
+                $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/util/vcos/posix/*.h $(STAGING_DIR)/usr/include/vcos/posix; \
+                $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/util/vcos/gcc/*.h $(STAGING_DIR)/usr/include/vcos/gcc; \
+            else \
+                $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/core/vcos/include/*.h $(STAGING_DIR)/usr/include/vcos/include; \
+                $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/core/vcos/posix/*.h $(STAGING_DIR)/usr/include/vcos/posix; \
+                $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/core/vcos/gcc/*.h $(STAGING_DIR)/usr/include/vcos/gcc; \
+            fi
 
             $(INSTALL) -d -m 0755 $(STAGING_DIR)/usr/include/libs
             $(INSTALL) -d -m 0755 $(STAGING_DIR)/usr/include/libs/util
@@ -92,21 +98,31 @@ ifeq ($(BCM_REFSW_PLATFORM_VC),vc5)
 
             if [ $(shell expr $(BCM_REFSW_VERSION) \>= 19.1) = 1 ]; then \
                 $(INSTALL) -m 0644 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/platform/stb/*.h $(STAGING_DIR)/usr/include/interface/khronos/include/bcg_abstract; \
-                $(INSTALL) -m 0644 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/platform/stb/gmem_plat.inl $(STAGING_DIR)/usr/include/interface/khronos/include; \
+                if [ $(shell expr $(BCM_REFSW_VERSION) \< 19.2) = 1 ]; then \
+                    $(INSTALL) -m 0644 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/platform/stb/gmem_plat.inl $(STAGING_DIR)/usr/include/interface/khronos/include; \
+                    $(INSTALL) -m 0644 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/platform/gmem.inl $(STAGING_DIR)/usr/include/interface/khronos/include; \
+                fi \
             else \
                 $(INSTALL) -m 0644 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/platform/bcg_abstract/*.h $(STAGING_DIR)/usr/include/interface/khronos/include/bcg_abstract; \
                 $(INSTALL) -m 0644 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/platform/bcg_abstract/gmem_plat.inl $(STAGING_DIR)/usr/include/interface/khronos/include; \
+                $(INSTALL) -m 0644 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/platform/gmem.inl $(STAGING_DIR)/usr/include/interface/khronos/include; \
             fi
-            $(INSTALL) -m 0644 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/platform/gmem.inl $(STAGING_DIR)/usr/include/interface/khronos/include
 
             #ursr16.2 extra copy
             $(INSTALL) -m 0755 -d $(STAGING_DIR)/usr/include/GLES3
-			$(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/khrn/include/EGL/*.h   $(STAGING_DIR)/usr/include/EGL
-			$(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/khrn/include/GLES/*.h  $(STAGING_DIR)/usr/include/GLES
-			$(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/khrn/include/GLES2/*.h $(STAGING_DIR)/usr/include/GLES2
-			$(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/khrn/include/GLES3/*.h $(STAGING_DIR)/usr/include/GLES3
-			$(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/khrn/include/KHR/*.h   $(STAGING_DIR)/usr/include/KHR
-
+            if [ $(shell expr $(BCM_REFSW_VERSION) \>= 19.2) = 1 ]; then \
+                $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/include/EGL/*.h   $(STAGING_DIR)/usr/include/EGL; \
+                $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/include/GLES/*.h  $(STAGING_DIR)/usr/include/GLES; \
+                $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/include/GLES2/*.h $(STAGING_DIR)/usr/include/GLES2; \
+                $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/include/GLES3/*.h $(STAGING_DIR)/usr/include/GLES3; \
+                $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/include/KHR/*.h   $(STAGING_DIR)/usr/include/KHR; \
+            else \
+                $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/khrn/include/EGL/*.h   $(STAGING_DIR)/usr/include/EGL; \
+                $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/khrn/include/GLES/*.h  $(STAGING_DIR)/usr/include/GLES; \
+                $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/khrn/include/GLES2/*.h $(STAGING_DIR)/usr/include/GLES2; \
+                $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/khrn/include/GLES3/*.h $(STAGING_DIR)/usr/include/GLES3; \
+                $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/khrn/include/KHR/*.h   $(STAGING_DIR)/usr/include/KHR; \
+            fi
             $(INSTALL) -d -m 0755 $(STAGING_DIR)/usr/include/refsw/bseav
             $(INSTALL) -m 0755 $(@D)/BSEAV/lib/media/*.h   $(STAGING_DIR)/usr/include/refsw/bseav
 

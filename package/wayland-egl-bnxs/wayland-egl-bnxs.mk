@@ -12,12 +12,22 @@ WAYLAND_EGL_BNXS_AUTORECONF = YES
 WAYLAND_EGL_BNXS_AUTORECONF_OPTS = "-Icfg"
 WAYLAND_EGL_BNXS_DEPENDENCIES = host-pkgconf host-autoconf wayland bcm-refsw
 
+# Temporary fix for vss platforms
+ifeq ($(BR2_PACKAGE_BCM_REFSW_19_2),y)
+WAYLAND_EGL_BNXS_PKGDIR = "$(TOP_DIR)/package/wayland-egl-bnxs"
+
+define WAYLAND_EGL_BNXS_APPLY_19.2_PATCHES
+ $(APPLY_PATCHES) $(@D) $(WAYLAND_EGL_BNXS_PKGDIR) 0008-wayland-egl-nxpl-api-changes-bcm-19.2.patch.conditional
+endef
+WAYLAND_EGL_BNXS_POST_PATCH_HOOKS += WAYLAND_EGL_BNXS_APPLY_19.2_PATCHES
+endif
+
 WAYLAND_EGL_BNXS_CONF_OPTS = \
     --prefix=/usr/ \
     --disable-silent-rules \
     --disable-dependency-tracking
 
-ifeq ($(BR2_PACKAGE_BCM_REFSW_19_1),y)
+ifeq ($(BR2_PACKAGE_BCM_REFSW_19_1)$(BR2_PACKAGE_BCM_REFSW_19_2),y)
 WAYLAND_EGL_BNXS_CONF_OPTS += --enable-refsw19_1
 else
 WAYLAND_EGL_BNXS_CONF_OPTS += --enable-refsw_latest

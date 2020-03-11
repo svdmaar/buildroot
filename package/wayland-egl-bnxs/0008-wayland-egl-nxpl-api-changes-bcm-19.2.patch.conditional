@@ -1,0 +1,31 @@
+diff --git a/wayland-egl.cpp b/wayland-egl.cpp
+index beba21e..55b5847 100644
+--- a/wayland-egl.cpp
++++ b/wayland-egl.cpp
+@@ -278,7 +278,7 @@ static void buffer_release( void *data, struct wl_buffer *buffer )
+    if ( binfo->bufferCtx )
+    {
+       // Signal buffer is available again
+-      NXPL_ReleaseBuffer( (void*)binfo->bufferCtx );
++      NXPL_ReleaseBuffer( (void*)binfo->bufferCtx, (void*)binfo->deviceBuffer);
+    }
+    
+    wl_buffer_destroy( buffer );
+@@ -342,7 +342,7 @@ void bnxsReferenceBuffer( void *userData, void *buffer, void *bufferCtx )
+          }
+          else
+          {
+-            NXPL_ReleaseBuffer( bufferCtx );
++            NXPL_ReleaseBuffer( bufferCtx, buffer );
+             wl_buffer_destroy( wlBuff );
+          }
+       }
+@@ -362,7 +362,7 @@ void bnxsNewSingleBuffer( void *userData, void *buffer, void *bufferCtx )
+    }
+ }
+ 
+-void bnxsDispatchPending( void *userData, bool force )
++bool bnxsDispatchPending( void *userData, bool force )
+ {
+    struct wl_egl_window *egl_window= (struct wl_egl_window*)userData;
+    if ( egl_window->bnxs && !egl_window->windowDestroyPending )

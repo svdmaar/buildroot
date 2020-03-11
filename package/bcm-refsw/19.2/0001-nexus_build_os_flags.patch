@@ -1,0 +1,12 @@
+diff -auNr a/nexus/build/os/linuxkernel/os_flags.inc b/nexus/build/os/linuxkernel/os_flags.inc
+--- a/nexus/build/os/linuxkernel/os_flags.inc	2015-08-14 18:40:44.000000000 -0400
++++ b/nexus/build/os/linuxkernel/os_flags.inc	2015-08-19 09:59:04.559121686 -0400
+@@ -162,7 +162,7 @@
+ # ARM
+ 
+ # CFLAGS only for OS abstraction files
+-NEXUS_KERNEL_CFLAGS += \
++NEXUS_CFLAGS += \
+         -DLINUX \
+         -D__KERNEL__ \
+         -I$(LINUX)/include\

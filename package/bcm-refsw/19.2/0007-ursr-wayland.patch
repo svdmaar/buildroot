@@ -1,0 +1,12 @@
+diff -auNrd a/BSEAV/lib/gpu/vc5/platform/nexus/default_nexus.h b/BSEAV/lib/gpu/vc5/platform/nexus/default_nexus.h
+--- a/BSEAV/lib/gpu/vc5/platform/nexus/default_nexus.h	2019-08-15 18:42:04.427082705 -0400
++++ b/BSEAV/lib/gpu/vc5/platform/nexus/default_nexus.h	2019-08-15 18:44:57.066323156 -0400
+@@ -159,7 +159,7 @@
+ 
+ NXPL_EXPORT void NXPL_UpdateNativeWindowDisplayType(void *native, NXPL_DisplayType type);
+ 
+-extern bool NXPL_CreateCompatiblePixmapClone(NXPL_PlatformHandle handle, void **pixmapHandle, NEXUS_SURFACEHANDLE surface, BEGL_PixmapInfo *info);
++extern bool NXPL_CreateCompatiblePixmapClone(NXPL_PlatformHandle handle, void **pixmapHandle, NEXUS_SURFACEHANDLE surface, struct BEGL_PixmapInfo *info);
+ extern void NXPL_DestroyCompatiblePixmapClone(NXPL_PlatformHandle handle, void *pixmapHandle);
+ 
+ #ifndef NXPL_PLATFORM_EXCLUSIVE

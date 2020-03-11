@@ -1,0 +1,679 @@
+diff --git a/BSEAV/lib/gpu/vc5/platform/nexus/default_nexus.c b/BSEAV/lib/gpu/vc5/platform/nexus/default_nexus.c
+index ee406caa7..c2e9773b7 100644
+--- a/BSEAV/lib/gpu/vc5/platform/nexus/default_nexus.c
++++ b/BSEAV/lib/gpu/vc5/platform/nexus/default_nexus.c
+@@ -20,6 +20,12 @@
+ 
+ #define UNUSED(X) (void)X
+ 
++#ifdef USE_WAYLAND_EGL
++static int gRefCount= 0;
++static NXPL_PlatformHandle *gPlatformHandle= 0;
++static pthread_mutex_t gMutex= PTHREAD_MUTEX_INITIALIZER;
++#endif
++
+ static BEGL_DisplayHandle ToBeglDisplayHandle(NEXUS_DISPLAYHANDLE display)
+ {
+    return display ? (BEGL_DisplayHandle)display : (BEGL_DisplayHandle)1;
+@@ -173,6 +179,12 @@ static inline bool opt_bool(const char *option)
+  * a Nexus display. */
+ void NXPL_RegisterNexusDisplayPlatform(NXPL_PlatformHandle *handle, NEXUS_DISPLAYHANDLE display)
+ {
++#ifdef USE_WAYLAND_EGL
++   pthread_mutex_lock(&gMutex);
++   if(!gPlatformHandle)
++   {
++#endif
++
+    NXPL_InternalPlatformHandle *platform = (NXPL_InternalPlatformHandle*)malloc(sizeof(NXPL_InternalPlatformHandle));
+    memset(platform, 0, sizeof(NXPL_InternalPlatformHandle));
+ 
+@@ -183,17 +195,38 @@ void NXPL_RegisterNexusDisplayPlatform(NXPL_PlatformHandle *handle, NEXUS_DISPLA
+       platform->displayInterface = NULL;
+       platform->currentDisplay = NULL;
+       platform->defaultDisplay = display;
++#ifdef USE_WAYLAND_EGL
++      gPlatformHandle= (NXPL_PlatformHandle)platform;
++#endif
+ 
+       *handle = (NXPL_PlatformHandle)platform;
+ 
+       BEGL_RegisterInitInterface(platform->initInterface);
+       BEGL_RegisterDisplayInterface(NULL);
+    }
++#ifdef USE_WAYLAND_EGL
++   }
++   pthread_mutex_unlock(&gMutex);
++
++   if(gPlatformHandle)
++   {
++      pthread_mutex_lock(&gMutex);
++      ++gRefCount;
++      pthread_mutex_unlock(&gMutex);
++      *handle= gPlatformHandle;
++   }
++#endif
+ }
+ 
+ /* Unregister a display for exclusive use. The client application can then use the Nexus display again. */
+ void NXPL_UnregisterNexusDisplayPlatform(NXPL_PlatformHandle handle)
+ {
++#ifdef USE_WAYLAND_EGL
++   pthread_mutex_lock(&gMutex);
++   if (--gRefCount <= 0)
++   {
++#endif
++
+    NXPL_InternalPlatformHandle *data = (NXPL_InternalPlatformHandle*)handle;
+ 
+    if (data != NULL)
+@@ -217,5 +250,14 @@ void NXPL_UnregisterNexusDisplayPlatform(NXPL_PlatformHandle handle)
+ 
+       memset(data, 0, sizeof(NXPL_InternalPlatformHandle));
+       free(data);
++
++#ifdef USE_WAYLAND_EGL
++      gPlatformHandle= 0;
++      gRefCount= 0;
++#endif
+    }
++#ifdef USE_WAYLAND_EGL
++   }
++   pthread_mutex_unlock(&gMutex);
++#endif
+ }
+diff --git a/BSEAV/lib/gpu/vc5/platform/nexus/default_nexus.h b/BSEAV/lib/gpu/vc5/platform/nexus/default_nexus.h
+index 403ccaac8..4ff7b8b1c 100644
+--- a/BSEAV/lib/gpu/vc5/platform/nexus/default_nexus.h
++++ b/BSEAV/lib/gpu/vc5/platform/nexus/default_nexus.h
+@@ -13,7 +13,9 @@
+ #endif
+ 
+ #include <EGL/egl.h>
+-
++#ifdef USE_WAYLAND_EGL
++#include "begl_displayplatform.h"
++#endif
+ #ifdef NXPL_PLATFORM_EXCLUSIVE
+ 
+ #include "nexus_display.h"
+@@ -48,18 +50,12 @@ struct BEGL_PixmapInfoEXT;
+ 
+ typedef void *NXPL_PlatformHandle;
+ 
+-typedef enum NXPL_DisplayType
+-{
+-   NXPL_2D = 0,
+-   NXPL_3D_LEFT_RIGHT,
+-   NXPL_3D_OVER_UNDER
+-} NXPL_DisplayType;
+-
+ #ifdef USE_WAYLAND_EGL
+-typedef void (*WEGLReferenceBuffer)( void *userData, void *buffer, void *bufferCtx );
+-typedef void (*WEGLNewSingleBuffer)( void *userData, void *buffer, void *bufferCtx );
+-typedef bool (*WEGLDispatchPending)( void *userData, bool force );
+-typedef void (*WEGLUpdateFence)( void *context, void *nativeWindow );
++typedef void (*WEGLUpdateFence)(void *context, void *nativeWindow, void *buffer);
++typedef void (*WEGLReferenceBuffer)(void *userData, void *buffer, void *bufferCtx);
++typedef void (*WEGLNewSingleBuffer)(void *userData, void *buffer, void *bufferCtx);
++typedef bool (*WEGLDispatchPending)(void *userData, bool force);
++
+ typedef struct _WEGLNativeWindowListener
+ {
+    WEGLReferenceBuffer referenceBuffer;
+@@ -68,6 +64,13 @@ typedef struct _WEGLNativeWindowListener
+ } WEGLNativeWindowListener;
+ #endif
+ 
++typedef enum NXPL_DisplayType
++{
++   NXPL_2D = 0,
++   NXPL_3D_LEFT_RIGHT,
++   NXPL_3D_OVER_UNDER
++} NXPL_DisplayType;
++
+ /* WARNING, deprecated */
+ typedef struct
+ {
+@@ -100,12 +103,6 @@ typedef struct
+    uint32_t             videoX;
+    uint32_t             videoY;
+    uint32_t             magic;
+-   #ifdef USE_WAYLAND_EGL
+-   void *userData;
+-   WEGLReferenceBuffer referenceBuffer;
+-   WEGLNewSingleBuffer newSingleBuffer;
+-   WEGLDispatchPending dispatchPending;
+-   #endif
+ } NXPL_NativeWindowInfoEXT;
+ 
+ /* Register a display for exclusive use. The client application should not use the display until
+@@ -142,11 +139,21 @@ NXPL_EXPORT void NXPL_DestroyNativeWindow(void *nativeWin);
+ NXPL_EXPORT void NXPL_GetDefaultPixmapInfoEXT(struct BEGL_PixmapInfoEXT *info);
+ 
+ #ifdef USE_WAYLAND_EGL
+-NXPL_EXPORT void NXPL_AttachNativeWindow( void *nativeWin, void *userData, WEGLNativeWindowListener *listener);
+-NXPL_EXPORT void NXPL_ResizeNativeWindow( void *nativeWin, int width, int height, int dx, int dy );
+-NXPL_EXPORT void NXPL_ReleaseBuffer( void *nativeWin );
++extern void NXPL_AttachNativeWindow(void *nativeWin, void *userData, WEGLNativeWindowListener *listener);
++extern void NXPL_ResizeNativeWindow(void *nativeWin, int width, int height, int dx, int dy);
++extern void NXPL_ReleaseBuffer(void *context, void *buffer);
++#endif
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++/* both wayland-egl and libnxpl have default_nexus.h, but libnxpl one gets populated
++in the sysroot so wayland-egl picks that one up but needs the API below which is not 
++part of libnxpl so we added it */
++NXPL_EXPORT bool NXPL_CreateCompatiblePixmap(NXPL_PlatformHandle handle, void **pixmapHandle, 
++                                             NEXUS_SURFACEHANDLE *surface, struct BEGL_PixmapInfo *info)
++   __attribute__((deprecated("Use NXPL_GetDefaultPixmapInfoEXT()/NXPL_CreateCompatiblePixmapEXT() instead")));
++#else
++NXPL_EXPORT bool NXPL_CreateCompatiblePixmap(NXPL_PlatformHandle handle, void **pixmapHandle, 
++                                                NEXUS_SurfaceHandle *surface, BEGL_PixmapInfo *info);
+ #endif
+-
+ NXPL_EXPORT bool NXPL_CreateCompatiblePixmapEXT(NXPL_PlatformHandle handle, void **pixmapHandle,
+                                                 NEXUS_SURFACEHANDLE *surface, struct BEGL_PixmapInfoEXT *info)
+    __attribute__((deprecated("Use Nexus surface with 3D compatibility flag instead")));
+@@ -158,7 +165,6 @@ NXPL_EXPORT void NXPL_SetDisplayType(NXPL_PlatformHandle handle, NXPL_DisplayTyp
+    __attribute__((deprecated("Use NXPL_UpdateNativeWindowDisplayType instead")));
+ 
+ NXPL_EXPORT void NXPL_UpdateNativeWindowDisplayType(void *native, NXPL_DisplayType type);
+-
+ extern bool NXPL_CreateCompatiblePixmapClone(NXPL_PlatformHandle handle, void **pixmapHandle, NEXUS_SURFACEHANDLE surface, struct BEGL_PixmapInfo *info);
+ extern void NXPL_DestroyCompatiblePixmapClone(NXPL_PlatformHandle handle, void *pixmapHandle);
+ 
+diff --git a/BSEAV/lib/gpu/vc5/platform/nexus/display_nexus.c b/BSEAV/lib/gpu/vc5/platform/nexus/display_nexus.c
+index 347bf6ffc..58ae2108a 100644
+--- a/BSEAV/lib/gpu/vc5/platform/nexus/display_nexus.c
++++ b/BSEAV/lib/gpu/vc5/platform/nexus/display_nexus.c
+@@ -36,7 +36,7 @@
+ #include <pthread.h>
+ #include <stdint.h>
+ #include <stdlib.h>
+-
++#include <errno.h>
+ enum
+ {
+    NATIVE_WINDOW_INFO_MAGIC = 0xABBA601D,
+@@ -271,7 +271,58 @@ static BEGL_Error DispReleaseNativeBuffer(void *context, uint32_t target,
+    }
+ }
+ 
+-static_assert(sizeof(WindowInfo) == sizeof(NXPL_NativeWindowInfoEXT), "sizeof(WindowInfo) & sizeof(NXPL_NativeWindowInfoEXT) need to match");
++   static_assert(sizeof(WindowInfo) == sizeof(NXPL_NativeWindowInfoEXT), "sizeof(WindowInfo) & sizeof(NXPL_NativeWindowInfoEXT) need to match");
++
++
++#ifdef USE_WAYLAND_EGL
++static int sem_wait_checked( sem_t *sem )
++{
++   int rc;
++   while ( true )
++   {
++      rc= sem_wait(sem);
++      if ( (rc == 0) || (errno != EINTR) ) break;
++   }
++   return rc;
++}
++
++void WaitForFreeSurface(WindowState *state)
++{
++    if ( !state->native_window->dispatchPending )
++        return;
++
++    bool force = false;
++    int loopCount = 0;
++    int loopLimit = 500;
++    int surfaceThreshold = state->native_window->numSurfaces;
++
++    while( state->native_window->pendingSurfaceCount >= surfaceThreshold )
++    {
++        if ( loopCount > loopLimit )
++        {
++            printf("DispGetNextSurface: probable freeze. Aborting...\n");
++            fflush(stdout);
++            assert(0);
++        }
++        if ( loopCount == 100 )
++        {
++            force = true;
++        }
++        ++loopCount;
++
++        if ( !state->native_window->dispatchPending( state->native_window->userData, force ) )
++        {
++           // The wayland display connection is down.  Post sem so we
++           // can return to application and terminate.
++           sem_post( &state->native_window->semSurfaces );
++           break;
++        }
++
++        if( state->native_window->pendingSurfaceCount >= surfaceThreshold )
++            usleep(10000);
++    }
++}
++#endif
+ 
+ static BEGL_SwapchainBuffer DispGetNextBuffer(
+    void *context,
+@@ -290,6 +341,15 @@ static BEGL_SwapchainBuffer DispGetNextBuffer(
+ 
+    assert(state->native_window->windowInfo.magic == NATIVE_WINDOW_INFO_MAGIC);
+ 
++#ifdef USE_WAYLAND_EGL
++   if ( state->native_window->referenceBuffer )
++   {
++       WaitForFreeSurface(state);
++       sem_wait_checked(&state->native_window->semSurfaces);
++       ++state->native_window->pendingSurfaceCount;
++   }
++#endif
++
+    NEXUS_SurfaceHandle *pSurface = (NEXUS_SurfaceHandle *)DisplayFramework_GetNextBuffer(
+          &state->display_framework, format, secure, age, dependency,
+          (WindowInfo *)&state->native_window->windowInfo);
+@@ -362,12 +422,19 @@ static void *DispWindowPlatformStateCreate(void *context, void *native)
+          if (!DisplayInterface_InitNexusMulti(&df->display_interface,
+                buffers, nw, &ctx->debug))
+             goto error_display;
++#ifdef USE_WAYLAND_EGL
++         DisplayInterface_SetNativeWindowNexusMulti(&df->display_interface, nw);
++#endif
+ #endif
+-
+          state->native_window = nw;
+ 
+          if (!DisplayFramework_Start(df, buffers))
+             goto error_framework;
++
++#ifdef USE_WAYLAND_EGL
++            nw->frameworkData= &state->display_framework;
++            nw->displayData= (void*)df->display_interface.base.context;
++#endif
+       }
+    }
+    return state;
+@@ -537,6 +604,15 @@ void *NXPL_CreateNativeWindowEXT(const NXPL_NativeWindowInfoEXT *info)
+ #endif /* !defined(NXPL_PLATFORM_EXCLUSIVE) */
+    }
+ 
++#ifdef USE_WAYLAND_EGL
++      char *val = getenv("V3D_DOUBLE_BUFFER");
++      if (val && (val[0] == 't' || val[0] == 'T' || val[0] == '1'))
++         nw->numSurfaces = 2;
++      else
++         nw->numSurfaces = MAX_SWAP_BUFFERS; 
++      sem_init( &nw->semSurfaces, 0, nw->numSurfaces);
++#endif
++
+    return nw;
+ 
+ error:
+@@ -581,6 +657,9 @@ void NXPL_DestroyNativeWindow(void *native)
+       NxClient_Free(&nw->allocResults);
+ #endif
+ #endif /* NXPL_PLATFORM_EXCLUSIVE */
++#ifdef USE_WAYLAND_EGL
++      sem_destroy( &nw->semSurfaces );
++#endif
+ 
+       free(nw);
+    }
+@@ -723,45 +802,68 @@ void NXPL_DestroyCompatiblePixmap(NXPL_PlatformHandle handle, void *pixmapHandle
+    if (nexusSurface)
+          NEXUS_Surface_Destroy(nexusSurface);
+ }
+-
+-#ifdef USE_WAYLAND_EGL
+-void NXPL_AttachNativeWindow( void *nativeWin, void *userData, WEGLNativeWindowListener *listener)
++#if COMCAST_RDK_SPECIFIC_CHANGE || 1
++bool NXPL_CreateCompatiblePixmap(NXPL_PlatformHandle handle, void **pixmapHandle, NEXUS_SurfaceHandle *surface, BEGL_PixmapInfo *info)
+ {
+-   NXPL_NativeWindow *nw = (NXPL_NativeWindow*)nativeWin;
+-   nw->userData= userData;
+-   nw->referenceBuffer= listener->referenceBuffer;
+-   nw->dispatchPending= listener->dispatchPending;
+-}
++   BEGL_PixmapInfoEXT   infoEXT;
+ 
+-void NXPL_ResizeNativeWindow( void *nativeWin, int width, int height, int dx, int dy )
+-{
+-   NXPL_NativeWindow *nw = (NXPL_NativeWindow*)nativeWin;
+-   nw->windowInfo.x += dx;
+-   nw->windowInfo.y += dy;
+-   nw->windowInfo.width = width;
+-   nw->windowInfo.height = height;
++   NXPL_GetDefaultPixmapInfoEXT(&infoEXT);
++
++   infoEXT.width  = info->width;
++   infoEXT.height = info->height;
++   infoEXT.format = info->format;
++
++   return NXPL_CreateCompatiblePixmapEXT(handle, pixmapHandle, surface, &infoEXT);
+ }
++#endif
+ 
+-void NXPL_ReleaseBuffer( void *nativeWin )
++
++bool NXPL_CreateCompatiblePixmapClone(NXPL_PlatformHandle handle, void **pixmapHandle, NEXUS_SURFACEHANDLE surface, struct BEGL_PixmapInfo *info)
+ {
+-   NXPL_NativeWindow *nw = (NXPL_NativeWindow*)nativeWin;
++#if 0
++   if (!info || info->magic != PIXMAP_INFO_MAGIC)
++      return false;
++
++   NEXUS_SurfaceCreateSettings surfSettings;
++   NEXUS_Surface_GetDefaultCreateSettings(&surfSettings);
+ 
+-   //sem_post(&nw->numBuffers);   
++   if (!BeglToNexusFormat(&surfSettings.pixelFormat, info->format))
++      return false;
++
++   // Note we allow NEXUS_Surface_Create to allocate the memory as
++   // it will calculate the required size for UIF surfaces as well as
++   // raster and we don't want to duplicate the logic for that here.
++   surfSettings.compatibility.graphicsv3d = true;
+ 
+-   if ( nw->updateFence )
++   surfSettings.width = info->width;
++   surfSettings.height = info->height;
++   // NEXUS surface creation specifies the mip level number at the beginning
++   // of the surface, not the number of miplevels.
++   surfSettings.mipLevel = info->miplevels - 1;
++   surfSettings.heap = info->secure ? GetSecureHeap() : GetDisplayHeap(0);
++   surfSettings.alignment = 12; // log2(4096)
++
++   NEXUS_SurfaceHandle nexusSurface = NEXUS_Surface_Create(&surfSettings);
++
++   if (nexusSurface)
+    {
+-      nw->updateFence( nw->fenceContext, nw );
++      if (pixmapHandle != NULL)
++         *pixmapHandle = nexusSurface;
++
++      if (surface != NULL)
++         *surface = nexusSurface;
+    }
+-}
+-#endif
+ 
+-bool NXPL_CreateCompatiblePixmapClone(NXPL_PlatformHandle handle, void **pixmapHandle, NEXUS_SURFACEHANDLE surface, struct BEGL_PixmapInfo *info)
+-{
+-   NXPL_InternalPlatformHandle *data = (NXPL_InternalPlatformHandle*)handle;
+-   return false;
++   return nexusSurface != NULL;
++#endif
++return false;
+ }
+ 
+ void NXPL_DestroyCompatiblePixmapClone(NXPL_PlatformHandle handle, void *pixmapHandle)
+ {
+-   NXPL_InternalPlatformHandle *data = (NXPL_InternalPlatformHandle*)handle;
++#if 0
++    NEXUS_SurfaceHandle nexusSurface = (NEXUS_SurfaceHandle)pixmapHandle;
++	if (nexusSurface)
++		  NEXUS_Surface_Destroy(nexusSurface);
++#endif
+ }
+diff --git a/BSEAV/lib/gpu/vc5/platform/nexus/display_nexus_multi.c b/BSEAV/lib/gpu/vc5/platform/nexus/display_nexus_multi.c
+index 91e61a7c1..f5ff018dd 100644
+--- a/BSEAV/lib/gpu/vc5/platform/nexus/display_nexus_multi.c
++++ b/BSEAV/lib/gpu/vc5/platform/nexus/display_nexus_multi.c
+@@ -46,6 +46,16 @@ typedef struct display
+    void                      *vsyncEvent;
+    int                        terminating;
+    const BEGL_DebugInterface *debug;
++
++#ifdef USE_WAYLAND_EGL
++   NXPL_NativeWindow *nativeWindow;
++   void *userData;
++   WEGLReferenceBuffer referenceBuffer;
++   WEGLNewSingleBuffer newSingleBuffer;
++   WEGLDispatchPending dispatchPending;
++   WEGLUpdateFence updateFence;
++   void *fenceContext;
++#endif
+ } display;
+ 
+ static void SetDisplayComposition(display *self, const WindowInfo *windowInfo)
+@@ -131,27 +141,58 @@ static void recycledCallback(void *context, int param)
+ {
+    display *self = (display *)context;
+    const BEGL_DebugInterface *debug = self->debug;
++#ifndef USE_WAYLAND_EGL
+    UNUSED(param);
++#endif
+ 
+    int terminating = __sync_fetch_and_and(&self->terminating, 1);
+ 
+    platform_dbg_message_add("%s, terminating %s", __func__, terminating ? "true" : "false");
+ 
++#ifdef USE_WAYLAND_EGL
++   if (!terminating && (param || (self->nativeWindow->referenceBuffer == NULL)))
++#else
+    if (!terminating)
++#endif
+    {
+       size_t numRecycled = 1;
+       NEXUS_SurfaceHandle surface_list[self->numSurfaces];
+       NXPL_NativeWindow *nw = self->nw;
++#ifdef USE_WAYLAND_EGL
++      if(!(self->nativeWindow->referenceBuffer))
++      {
++#endif
+       NEXUS_SurfaceClient_RecycleSurface(nw->surfaceClient, surface_list, self->numSurfaces, &numRecycled);
+ 
+-      platform_dbg_message_add("%s, numRecycled %zd", __func__, numRecycled);
++      platform_dbg_message_add("%s, numRecycled %zd", __FUNCTION__, numRecycled);
++#ifdef USE_WAYLAND_EGL
++      }
++#endif
+ 
++#ifdef USE_WAYLAND_EGL
++	  if(!(self->nativeWindow->referenceBuffer)){
++#endif
+       pthread_mutex_lock(&self->mutex);
++#ifdef USE_WAYLAND_EGL
++	  }
++#endif
+       for (size_t i = 0; i < numRecycled; i++)
+       {
+-         platform_dbg_message_add("  %s %d - surface_list[%zd] = %p", __func__, __LINE__, i, surface_list[i]);
+-
++         platform_dbg_message_add("  %s %d - surface_list[%zd] = %p", __FUNCTION__, __LINE__, i, surface_list[i]);
++
++#ifdef USE_WAYLAND_EGL
++         WithNexus *found;
++         if(self->nativeWindow->referenceBuffer)
++         {
++           found = getWithNexus(self, (NEXUS_SurfaceHandle)param);
++         }
++         else
++         {
++           found = getWithNexus(self, surface_list[i]);
++         }
++#else
+          WithNexus *found = getWithNexus(self, surface_list[i]);
++#endif
+          assert(found);
+          found->release_cb(found->cb_context, found->pSurface);
+          debug->AddEvent(debug->context, BCM_EVENT_TRACK_DISPLAY,
+@@ -159,10 +200,33 @@ static void recycledCallback(void *context, int param)
+                (uintptr_t)found->id, (uint32_t)found->frame);
+          found->pSurface = NULL; /* empty this entry */
+       }
++#ifdef USE_WAYLAND_EGL
++	  if(!(self->nativeWindow->referenceBuffer)){
++#endif
+       pthread_mutex_unlock(&self->mutex);
++#ifdef USE_WAYLAND_EGL
++   }
++#endif
+    }
+ }
+ 
++#ifdef USE_WAYLAND_EGL
++void UpdateFence( void* context, void *nativeWindow, void *buffer )
++{
++   display *self = (display *)context;
++   NXPL_NativeWindow *nw= (NXPL_NativeWindow*)nativeWindow;
++
++   if ( self )
++   {
++      sem_post( &nw->semSurfaces );
++
++      if ( nw->pendingSurfaceCount > 0 )
++         --nw->pendingSurfaceCount; 
++
++      recycledCallback(context, (int)buffer);     
++   }
++}
++#endif
+ static DisplayInterfaceResult display_surface(void *context, void *s,
+       unsigned id, unsigned frame,
+       const WindowInfo *windowInfo,
+@@ -216,8 +280,17 @@ static DisplayInterfaceResult display_surface(void *context, void *s,
+          NEXUS_SurfaceClient_SetSettings(nw->videoClient, &clientSettings);
+       }
+    }
+-
+-   err = NEXUS_SurfaceClient_PushSurface(nw->surfaceClient, *pSurface, NULL, true);
++#ifdef USE_WAYLAND_EGL
++   if ( self->nativeWindow && self->nativeWindow->referenceBuffer )
++   {
++      self->nativeWindow->referenceBuffer( self->nativeWindow->userData, *pSurface, self );
++      err = NEXUS_SUCCESS;
++   }
++   else
++      err = NEXUS_SurfaceClient_PushSurface(nw->surfaceClient, *pSurface, NULL, true);
++#else
++      err = NEXUS_SurfaceClient_PushSurface(nw->surfaceClient, *pSurface, NULL, true);
++#endif
+    if (err == NEXUS_SUCCESS)
+    {
+       WithNexus *added = addWithNexus(self, pSurface, id, frame, release_cb,
+@@ -402,3 +475,56 @@ bool DisplayInterface_InitNexusMulti(DisplayInterface *di,
+    }
+    return self != NULL;
+ }
++
++#ifdef USE_WAYLAND_EGL
++void DisplayInterface_SetNativeWindowNexusMulti(DisplayInterface *di, void *nativeWindow )
++{
++   display *self = (display *)di->base.context;
++   if ( self )
++   {
++      self->nativeWindow= (NXPL_NativeWindow*)nativeWindow;
++
++      if ( self->nativeWindow && self->nativeWindow->referenceBuffer )
++      {
++         self->updateFence= UpdateFence;
++         self->fenceContext= self;
++      }
++   }
++}
++
++void NXPL_AttachNativeWindow(void *nativeWin, void *userData, WEGLNativeWindowListener *listener)
++{
++   NXPL_NativeWindow *nw= (NXPL_NativeWindow*)nativeWin;
++   nw->userData= userData;
++   nw->referenceBuffer= listener->referenceBuffer;
++   nw->newSingleBuffer= listener->newSingleBuffer;
++   nw->dispatchPending= listener->dispatchPending;
++}
++
++extern void NXPL_ResizeNativeWindow(void *nativeWin, int width, int height, int dx, int dy)
++{
++   NXPL_NativeWindow *nw= (NXPL_NativeWindow*)nativeWin;
++
++   if ( nw->referenceBuffer && nw->frameworkData )
++   {
++      nw->frameworkData->windowInfo.width= width;
++      nw->frameworkData->windowInfo.height= height;
++   }
++
++   nw->windowInfo.x += dx;
++   nw->windowInfo.y += dy;
++   nw->windowInfo.width = width;
++   nw->windowInfo.height = height;
++}
++
++extern void NXPL_ReleaseBuffer(void *context, void *buffer)
++{
++   display *self = (display *)context;
++
++   if ( self->updateFence )
++   {
++      self->updateFence( self->fenceContext, self->nativeWindow, buffer );
++   }
++}
++#endif
++
+diff --git a/BSEAV/lib/gpu/vc5/platform/nexus/display_nexus_multi.h b/BSEAV/lib/gpu/vc5/platform/nexus/display_nexus_multi.h
+index 74a78626b..b812f1de8 100644
+--- a/BSEAV/lib/gpu/vc5/platform/nexus/display_nexus_multi.h
++++ b/BSEAV/lib/gpu/vc5/platform/nexus/display_nexus_multi.h
+@@ -16,5 +16,8 @@
+ bool DisplayInterface_InitNexusMulti(DisplayInterface *di,
+       unsigned int numSurfaces, NXPL_NativeWindow *nw,
+       const BEGL_DebugInterface *debug);
++#ifdef USE_WAYLAND_EGL
++void DisplayInterface_SetNativeWindowNexusMulti(DisplayInterface *di, void *nativeWindow );
++#endif
+ 
+ #endif /* __DISPLAY_NEXUS_MULTI_H__ */
+diff --git a/BSEAV/lib/gpu/vc5/platform/nexus/platform_nexus_common.mk b/BSEAV/lib/gpu/vc5/platform/nexus/platform_nexus_common.mk
+index 5627bce5d..6c0a34598 100644
+--- a/BSEAV/lib/gpu/vc5/platform/nexus/platform_nexus_common.mk
++++ b/BSEAV/lib/gpu/vc5/platform/nexus/platform_nexus_common.mk
+@@ -76,8 +76,15 @@ endif
+ 
+ LDFLAGS += -lpthread
+ 
++#COMCAST_RDK_SPECIFIC_CHANGE
++ifeq (1,1)
++#CC = $(B_REFSW_CROSS_COMPILE)gcc
++#C++ = $(B_REFSW_CROSS_COMPILE)g++
++C++ = $(CXX)
++else
+ CC = $(B_REFSW_CROSS_COMPILE)gcc
+ C++ = $(B_REFSW_CROSS_COMPILE)g++
++endif
+ 
+ ifeq ($(V3D_DEBUG),y)
+ CFLAGS += -O0 -g
+diff --git a/BSEAV/lib/gpu/vc5/platform/nexus/private_nexus.h b/BSEAV/lib/gpu/vc5/platform/nexus/private_nexus.h
+index 8b59506ed..2546b8e6d 100644
+--- a/BSEAV/lib/gpu/vc5/platform/nexus/private_nexus.h
++++ b/BSEAV/lib/gpu/vc5/platform/nexus/private_nexus.h
+@@ -26,6 +26,7 @@ typedef struct
+ {
+    /* Main thread data */
+    NXPL_NativeWindowInfoEXT   windowInfo;
++   unsigned int               numSurfaces;
+ 
+ #ifndef NXPL_PLATFORM_EXCLUSIVE
+    uint32_t                   clientID;
+@@ -38,15 +39,15 @@ typedef struct
+ #endif /* NXPL_PLATFORM_EXCLUSIVE */
+ 
+ #ifdef USE_WAYLAND_EGL
+-   void                       *userData;
+-   WEGLReferenceBuffer        referenceBuffer;
+-   WEGLDispatchPending        dispatchPending;
+-   WEGLUpdateFence            updateFence;
+-   void                       *fenceContext;
+-   unsigned long long         lastFrameTime;
+-   pthread_mutex_t            mutex;
++   void *displayData;
++   void *userData;
++   DisplayFramework *frameworkData;
++   WEGLReferenceBuffer referenceBuffer;
++   WEGLNewSingleBuffer newSingleBuffer;
++   WEGLDispatchPending dispatchPending;
++   unsigned int pendingSurfaceCount;
++   sem_t semSurfaces;
+ #endif
+-
+ } NXPL_NativeWindow;
+ 
+ typedef struct

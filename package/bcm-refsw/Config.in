@@ -63,11 +63,14 @@ choice
 	config BR2_PACKAGE_BCM_REFSW_17_4
 		bool "bcm-refsw 17.4"
 
-    config BR2_PACKAGE_BCM_REFSW_18_2
-        bool "bcm-refsw 18.2"
+	config BR2_PACKAGE_BCM_REFSW_18_2
+		bool "bcm-refsw 18.2"
 
-    config BR2_PACKAGE_BCM_REFSW_19_1
-        bool "bcm-refsw 19.1"
+	config BR2_PACKAGE_BCM_REFSW_19_1
+		bool "bcm-refsw 19.1"
+
+	config BR2_PACKAGE_BCM_REFSW_19_2
+		bool "bcm-refsw 19.2"
 endchoice
 
 if BR2_PACKAGE_BCM_REFSW_CUSTOM_VERSION

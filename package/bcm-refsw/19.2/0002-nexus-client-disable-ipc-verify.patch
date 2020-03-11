@@ -1,0 +1,20 @@
+diff -auNrd a/nexus/nxclient/server/Makefile b/nexus/nxclient/server/Makefile
+--- a/nexus/nxclient/server/Makefile	2017-05-23 18:26:51.577214132 -0400
++++ b/nexus/nxclient/server/Makefile	2017-05-23 18:29:51.611558448 -0400
+@@ -172,7 +172,7 @@
+ NXCLIENT_P_SHARED_LIB := $(BINDIR)/libnxclient.so
+ NXCLIENT_P_LOCAL_SHARED_LIB := $(BINDIR)/libnxclient_local.so
+ 
+-$(BINDIR)/nxserver $(BINDIR)/nxserverlib_ipc.o $(BINDIR)/nxserverlib_ipc_verify.o: $(NXCLIENT_P_SHARED_LIB)
++$(BINDIR)/nxserver $(BINDIR)/nxserverlib_ipc.o: $(NXCLIENT_P_SHARED_LIB)
+ 
+ $(NXCLIENT_P_SHARED_LIB): nexus
+ 	${Q_}BINDIR=$(BINDIR) NEXUS_TOP=$(NEXUS_TOP) $(MAKE) -f Makefile.lib
+@@ -200,7 +200,6 @@
+     nxserver_cmdline.c \
+     nxserverlib.c \
+     nxserverlib_ipc.c \
+-    nxserverlib_ipc_verify.c \
+     nxserverlib_audio.c \
+     nxserverlib_encoder.c \
+     nxserverlib_video.c \
