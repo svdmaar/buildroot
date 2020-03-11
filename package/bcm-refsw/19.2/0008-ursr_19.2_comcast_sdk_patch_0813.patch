@@ -1788,7 +1788,7 @@ diff -auNrd a/nexus/nxclient/server/Makefile b/nexus/nxclient/server/Makefile
 +### COMCAST_RDK_SPECIFIC_CHANGE ###########################
 +#HDCP
 +NXCLIENT_CFLAGS += -I$(NEXUS_TOP)/lib/os/include  -I$(NEXUS_TOP)/lib/os/include/linuxuser
-+LDFLAGS += -lb_os
++NXCLIENT_EXTRA_LDFLAGS += -lb_os
 +###########################################################
 +
 +### COMCAST_RDK_SPECIFIC_CHANGE ###########################
@@ -1822,7 +1822,7 @@ diff -auNrd a/nexus/nxclient/server/Makefile b/nexus/nxclient/server/Makefile
 -	@mkdir -p $(dir $@)
 +#COMCAST_RDK_SPECIFIC_CHANGE
 +ifeq (1,1)
-+	$(Q_)$(CC) -o $@ $(filter %.o %.a,$^) $(NXCLIENT_CFLAGS) $(LDFLAGS)
++	$(Q_)$(CC) -o $@ $(filter %.o %.a,$^) $(NXCLIENT_CFLAGS) $(NXCLIENT_EXTRA_LDFLAGS) $(LDFLAGS)
 +else
  	$(Q_)$(CC) -o $@ $(filter %.o %.a,$^) $(CFLAGS) $(LDFLAGS)
 +endif
