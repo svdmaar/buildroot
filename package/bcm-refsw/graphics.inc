@@ -17,7 +17,7 @@ endef
 
 define BCM_REFSW_INSTALL_GRAPHICS
 	if [ $(shell expr $(BCM_REFSW_VERSION) \>= 19.2) = 1 ]; then \
-		$(INSTALL) -D $(BCM_REFSW_BIN)/libv3ddriver.so $1/usr/lib/libv3dplatform.so; \
+		$(INSTALL) -D $(BCM_REFSW_BIN)/libv3dplatform.so $1/usr/lib/libv3dplatform.so; \
 	fi
 	$(INSTALL) -D $(BCM_REFSW_BIN)/libv3ddriver.so $1/usr/lib/libv3ddriver.so
 	$(INSTALL) -D $(BCM_REFSW_BIN)/libnxpl.so $1/usr/lib/libnxpl.so
