@@ -112,6 +112,7 @@ ifeq ($(BCM_REFSW_PLATFORM_VC),vc5)
             $(INSTALL) -m 0755 -d $(STAGING_DIR)/usr/include/GLES3
             if [ $(shell expr $(BCM_REFSW_VERSION) \>= 19.2) = 1 ]; then \
                 $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/include/EGL/*.h   $(STAGING_DIR)/usr/include/EGL; \
+                $(INSTALL) -m 0644 $(@D)/BSEAV/lib/gpu/vc5/driver/libs/khrn/egl/platform/bcg_abstract/*.h $(STAGING_DIR)/usr/include/EGL; \
                 $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/include/GLES/*.h  $(STAGING_DIR)/usr/include/GLES; \
                 $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/include/GLES2/*.h $(STAGING_DIR)/usr/include/GLES2; \
                 $(INSTALL) -m 0755 $(@D)/BSEAV/lib/gpu/include/GLES3/*.h $(STAGING_DIR)/usr/include/GLES3; \
