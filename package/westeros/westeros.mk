@@ -3,7 +3,7 @@
 # westeros
 #
 ################################################################################
-WESTEROS_VERSION = 9f597624c850923bfa51d3a74b33f17ad79b2ecf
+WESTEROS_VERSION = 347f69632ca0bdf7e6c7b5ff6b9c5e37f6768aed
 WESTEROS_SITE_METHOD = git
 WESTEROS_SITE = git://github.com/rdkcmf/westeros
 WESTEROS_INSTALL_STAGING = YES
@@ -49,6 +49,7 @@ endif # BR2_PACKAGE_WESTEROS_SOC_RPI
 define WESTEROS_RUN_AUTOCONF
 	mkdir -p $(@D)/cfg
 	mkdir -p $(@D)/essos/cfg
+	mkdir -p $(@D)/m4
 endef
 WESTEROS_PRE_CONFIGURE_HOOKS += WESTEROS_RUN_AUTOCONF
 
