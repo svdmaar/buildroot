@@ -169,6 +169,32 @@ config BR2_PACKAGE_WPEFRAMEWORK_PLUGIN_NETFLIX_DEVICE_KEYS
     string "device keys"
     help 
         "Define the location where the hareware bound ESN and encryption keys can be found. Leave empty to disable"
+
+menu "Platform specific IID's"
+    config BR2_PACKAGE_WPEFRAMEWORK_PLUGIN_NETFLIX_IID_BG_LAUNCH
+      	string "Background launch"
+      	default "00000000"
+      	help
+      	  8 digit hex IID while launching into background
+
+    config BR2_PACKAGE_WPEFRAMEWORK_PLUGIN_NETFLIX_IID_FG_LAUNCH
+      	string "Foreground launch"
+      	default "00000000"
+      	help
+      	  8 digit hex IID while launching into foreground
+
+    config BR2_PACKAGE_WPEFRAMEWORK_PLUGIN_NETFLIX_IID_BG_RESTART
+      	string "Background restart"
+      	default "00000000"
+      	help
+      	  8 digit hex IID while restarting into background
+
+    config BR2_PACKAGE_WPEFRAMEWORK_PLUGIN_NETFLIX_IID_FG_RESTART
+      	string "Foreground restart"
+      	default "00000000"
+      	help
+      	  8 digit hex IID while restarting into foreground
+endmenu
 endif
 
 comment "netflix is dependent on the netflix package compiled as library"
