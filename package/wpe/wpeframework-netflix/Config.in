@@ -171,29 +171,31 @@ config BR2_PACKAGE_WPEFRAMEWORK_PLUGIN_NETFLIX_DEVICE_KEYS
         "Define the location where the hareware bound ESN and encryption keys can be found. Leave empty to disable"
 
 menu "Platform specific IID's"
+depends on BR2_PACKAGE_NETFLIX52
+
     config BR2_PACKAGE_WPEFRAMEWORK_PLUGIN_NETFLIX_IID_BG_LAUNCH
       	string "Background launch"
-      	default "00000000"
+      	default ""
       	help
-      	  8 digit hex IID while launching into background
+      	  8 digit hex IID while launching into background. Do not prepend with 0x prefix.
 
     config BR2_PACKAGE_WPEFRAMEWORK_PLUGIN_NETFLIX_IID_FG_LAUNCH
       	string "Foreground launch"
-      	default "00000000"
+      	default ""
       	help
-      	  8 digit hex IID while launching into foreground
+      	  8 digit hex IID while launching into foreground. Do not prepend with 0x prefix.
 
     config BR2_PACKAGE_WPEFRAMEWORK_PLUGIN_NETFLIX_IID_BG_RESTART
       	string "Background restart"
-      	default "00000000"
+      	default ""
       	help
-      	  8 digit hex IID while restarting into background
+      	  8 digit hex IID while restarting into background. Do not prepend with 0x prefix.
 
     config BR2_PACKAGE_WPEFRAMEWORK_PLUGIN_NETFLIX_IID_FG_RESTART
       	string "Foreground restart"
-      	default "00000000"
+      	default ""
       	help
-      	  8 digit hex IID while restarting into foreground
+      	  8 digit hex IID while restarting into foreground. Do not prepend with 0x prefix.
 endmenu
 endif
 
