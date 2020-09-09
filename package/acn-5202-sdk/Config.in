@@ -1,0 +1,33 @@
+config BR2_PACKAGE_ACN_5202_SDK
+	bool "acn-5202-sdk"
+	depends on BR2_arm
+	select BR2_PACKAGE_HAS_NEXUS_SAGE
+	select BR2_PACKAGE_HAS_NEXUS
+	select BR2_PACKAGE_HAS_LIBEGL
+	select BR2_PACKAGE_HAS_LIBGLES
+	select BR2_PACKAGE_HAS_PLAYREADY
+        select BR2_PACKAGE_HAS_VP9_DECODER
+	help
+	  Pre-compiled binaries for a platform
+
+if BR2_PACKAGE_ACN_5202_SDK
+
+config BR2_PACKAGE_PROVIDES_NEXUS
+	default "acn-5202-sdk"
+
+config BR2_PACKAGE_PROVIDES_LIBEGL
+	default "acn-5202-sdk"
+
+config BR2_PACKAGE_PROVIDES_LIBGLES
+	default "acn-5202-sdk"
+
+config BR2_PACKAGE_PROVIDES_PLAYREADY
+	default "acn-5202-sdk"
+
+config BR2_PACKAGE_PROVIDES_VP9_DECODER
+	default "acn-5202-sdk"
+
+config BR2_PACKAGE_PROVIDES_NEXUS_SAGE
+	default "acn-5202-sdk"
+
+endif
