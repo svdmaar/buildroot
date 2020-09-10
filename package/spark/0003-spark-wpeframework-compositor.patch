@@ -1,8 +1,53 @@
+diff --git a/cmake/CommDeps.cmake b/cmake/CommDeps.cmake
+index 97a0ecd..4250e95 100644
+--- a/cmake/CommDeps.cmake
++++ b/cmake/CommDeps.cmake
+@@ -216,6 +216,26 @@ set(COMM_DEPS_LIBRARY_DIRS ${COMM_DEPS_LIBRARY_DIRS}
+       ${SQLITE_LIBRARY_DIRS}
+    )
+ 
++if (BUILD_WITH_WPEFRAMEWORK)
++
++set(COMM_DEPS_LIBRARIES ${COMM_DEPS_LIBRARIES}
++           ${ZLIB_LIBRARIES}
++           ${CURL_LIBRARIES}
++           ${JPEG_LIBRARIES}
++     ${TURBO_JPEG_LIBRARIES}
++            ${PNG_LIBRARIES}
++       ${FREETYPE_LIBRARIES}
++         ${CRYPTO_LIBRARIES}
++        ${OPENSSL_LIBRARIES}
++            ${X11_LIBRARIES}
++             ${UV_LIBRARIES}
++       ${ICU_I18N_LIBRARIES}
++         ${ICU_UC_LIBRARIES}
++         ${SQLITE_LIBRARIES}
++   )
++
++else ()
++
+ set(COMM_DEPS_LIBRARIES ${COMM_DEPS_LIBRARIES}
+            ${ZLIB_LIBRARIES}
+            ${CURL_LIBRARIES}
+@@ -235,3 +255,4 @@ set(COMM_DEPS_LIBRARIES ${COMM_DEPS_LIBRARIES}
+          ${ICU_UC_LIBRARIES}
+          ${SQLITE_LIBRARIES}
+    )
++endif (BUILD_WITH_WPEFRAMEWORK)
 diff --git a/examples/pxScene2d/src/CMakeLists.txt b/examples/pxScene2d/src/CMakeLists.txt
-index 4585886..dc343ad 100644
+index 6e0d534..672946e 100644
 --- a/examples/pxScene2d/src/CMakeLists.txt
 +++ b/examples/pxScene2d/src/CMakeLists.txt
-@@ -236,6 +236,12 @@ elseif (CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+@@ -177,7 +177,7 @@ elseif (CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+                   ${NODE_LIBRARIES}
+                   ${V8_LIBRARIES}
+                   ${DUKE_LIBRARIES}
+-             ${COMM_DEPS_LIBRARIES}
++                  ${COMM_DEPS_LIBRARIES}
+              pthread rt dl m)
+ 
+     set(PXSCENE_APP_LIBRARIES ${PXSCENE_APP_LIBRARIES} pxCore rtCore_s)
+@@ -257,6 +257,13 @@ elseif (CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
          set(PXCORE_INCLUDES $ENV{PXCORE_INCLUDES})
          separate_arguments(PXCORE_INCLUDES)
          include_directories(BEFORE ${PXCORE_INCLUDES})
@@ -11,6 +56,7 @@ index 4585886..dc343ad 100644
 +        set(PX_PLATFORM PX_PLATFORM_WPEFRAMEWORK)
 +        set(PXCORE_LIB_LOCATION ${PXCOREDIR}/build/wpe)
 +        set(PLATFORM_SOURCES egl/pxContextUtils.cpp)
++
 +        set(PXSCENE_LINK_LIBRARIES ${PXSCENE_LINK_LIBRARIES} compositorclient)
      else ()
          message("building pxscene for glut")
@@ -38,10 +84,10 @@ index be2ca29..a5f7b36 100644
  #include <GLES2/gl2ext.h>
  #else
 diff --git a/examples/pxScene2d/src/pxContextGL.cpp b/examples/pxScene2d/src/pxContextGL.cpp
-index aef118b..1b8a68c 100644
+index e37a6dd..5855b64 100644
 --- a/examples/pxScene2d/src/pxContextGL.cpp
 +++ b/examples/pxScene2d/src/pxContextGL.cpp
-@@ -38,7 +38,7 @@
+@@ -40,7 +40,7 @@
  #include <OpenGL/gl.h>
  #include <OpenGL/glu.h>
  #else
@@ -50,7 +96,7 @@ index aef118b..1b8a68c 100644
  #include <GLES2/gl2.h>
  #ifndef GL_GLEXT_PROTOTYPES
  #define GL_GLEXT_PROTOTYPES
-@@ -53,7 +53,7 @@
+@@ -55,7 +55,7 @@
  #include <GL/glut.h>
  #endif
  #include <GL/gl.h>
@@ -59,9 +105,9 @@ index aef118b..1b8a68c 100644
  #endif
  
  #include "pxContextUtils.h"
-@@ -130,11 +130,11 @@ enum pxCurrentGLProgram { PROGRAM_UNKNOWN = 0, PROGRAM_SOLID_SHADER,  PROGRAM_A_
+@@ -129,11 +129,11 @@ double garbageCollectThrottleInSeconds = CONTEXT_GC_THROTTLE_SECS_DEFAULT;
  
- pxCurrentGLProgram currentGLProgram = PROGRAM_UNKNOWN;
+ int currentGLProgram = -1;
  
 -#if defined(PX_PLATFORM_WAYLAND_EGL) || defined(PX_PLATFORM_GENERIC_EGL)
 +#if defined(PX_PLATFORM_WAYLAND_EGL) || defined(PX_PLATFORM_GENERIC_EGL) || defined(PX_PLATFORM_WPEFRAMEWORK)
@@ -73,7 +119,7 @@ index aef118b..1b8a68c 100644
  
  // TODO get rid of this global crap
  
-@@ -451,7 +451,7 @@ public:
+@@ -450,7 +450,7 @@ public:
    {
      if (mFramebufferId!= 0)
      {
@@ -82,7 +128,7 @@ index aef118b..1b8a68c 100644
        if (mAntiAliasing)
        {
          GLint currentFBO = 0;
-@@ -501,7 +501,7 @@ public:
+@@ -500,7 +500,7 @@ public:
        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
                               GL_TEXTURE_2D, mTextureId, 0);
  
@@ -91,7 +137,7 @@ index aef118b..1b8a68c 100644
        if (mAntiAliasing)
        {
          glFramebufferTexture2DMultisampleEXT(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, mTextureId, 0, 2);
-@@ -586,7 +586,7 @@ private:
+@@ -585,7 +585,7 @@ private:
    bool mBindTexture;
    bool mAlphaOnly;
  
@@ -100,7 +146,7 @@ index aef118b..1b8a68c 100644
    bool mAntiAliasing;
  #endif
  
-@@ -2295,12 +2295,12 @@ void pxContext::init()
+@@ -2207,12 +2207,12 @@ void pxContext::init()
  
    rtLogInfo("context garbage collect throttle set to %f seconds", garbageCollectThrottleInSeconds);
  
@@ -115,11 +161,24 @@ index aef118b..1b8a68c 100644
  
    std::srand(unsigned (std::time(0)));
  }
+diff --git a/examples/pxScene2d/src/pxShaderResource.h b/examples/pxScene2d/src/pxShaderResource.h
+index 49b2bbb..ccb0282 100644
+--- a/examples/pxScene2d/src/pxShaderResource.h
++++ b/examples/pxScene2d/src/pxShaderResource.h
+@@ -34,7 +34,7 @@ pxCore Copyright 2005-2018 John Robinson
+ #include <OpenGL/gl.h>
+ #include <OpenGL/glu.h>
+ #else
+-#if defined(PX_PLATFORM_WAYLAND_EGL) || defined(PX_PLATFORM_GENERIC_EGL)
++#if defined(PX_PLATFORM_WAYLAND_EGL) || defined(PX_PLATFORM_GENERIC_EGL) || defined(PX_PLATFORM_WPEFRAMEWORK)
+ #include <GLES2/gl2.h>
+ #ifndef GL_GLEXT_PROTOTYPES
+ #define GL_GLEXT_PROTOTYPES
 diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
-index 10f315c..7464945 100644
+index aa4ac63..a9d48a7 100755
 --- a/src/CMakeLists.txt
 +++ b/src/CMakeLists.txt
-@@ -127,6 +127,24 @@ elseif (CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
+@@ -138,6 +138,24 @@ elseif (CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
                  gles/pxEventLoopNative.cpp gles/pxTimerNative.cpp gles/pxClipboardNative.cpp)
          endif (PXCORE_ESSOS)
          set(PLATFORM_LINKER_FLAGS)
@@ -173,7 +232,7 @@ index f91cc81..66ea12f 100644
  #error "PX_PLATFORM NOT HANDLED"
  #endif
 diff --git a/src/wpeframework/pxBufferNative.cpp b/src/wpeframework/pxBufferNative.cpp
-index e69de29..d174a3a 100755
+index e69de29..d174a3a 100644
 --- a/src/wpeframework/pxBufferNative.cpp
 +++ b/src/wpeframework/pxBufferNative.cpp
 @@ -0,0 +1,40 @@
@@ -218,7 +277,7 @@ index e69de29..d174a3a 100755
 +
 +
 diff --git a/src/wpeframework/pxBufferNative.h b/src/wpeframework/pxBufferNative.h
-index e69de29..39e2c08 100755
+index e69de29..39e2c08 100644
 --- a/src/wpeframework/pxBufferNative.h
 +++ b/src/wpeframework/pxBufferNative.h
 @@ -0,0 +1,37 @@
@@ -368,7 +427,7 @@ index e69de29..1dc8fab 100644
 +
 +#endif // PX_CLIPBOARDNATIVE_H
 diff --git a/src/wpeframework/pxConfigNative.h b/src/wpeframework/pxConfigNative.h
-index e69de29..60ca7ad 100755
+index e69de29..60ca7ad 100644
 --- a/src/wpeframework/pxConfigNative.h
 +++ b/src/wpeframework/pxConfigNative.h
 @@ -0,0 +1,37 @@
@@ -410,7 +469,7 @@ index e69de29..60ca7ad 100755
 +#endif
 +
 diff --git a/src/wpeframework/pxEventLoopNative.cpp b/src/wpeframework/pxEventLoopNative.cpp
-index e69de29..31dced7 100755
+index e69de29..31dced7 100644
 --- a/src/wpeframework/pxEventLoopNative.cpp
 +++ b/src/wpeframework/pxEventLoopNative.cpp
 @@ -0,0 +1,42 @@
@@ -457,7 +516,7 @@ index e69de29..31dced7 100755
 +    pxWindowNative::exitEventLoop();
 +}
 diff --git a/src/wpeframework/pxOffscreenNative.cpp b/src/wpeframework/pxOffscreenNative.cpp
-index e69de29..166e55f 100755
+index e69de29..166e55f 100644
 --- a/src/wpeframework/pxOffscreenNative.cpp
 +++ b/src/wpeframework/pxOffscreenNative.cpp
 @@ -0,0 +1,60 @@
@@ -522,7 +581,7 @@ index e69de29..166e55f 100755
 +    return PX_OK;
 +}
 diff --git a/src/wpeframework/pxOffscreenNative.h b/src/wpeframework/pxOffscreenNative.h
-index e69de29..aad33ce 100755
+index e69de29..aad33ce 100644
 --- a/src/wpeframework/pxOffscreenNative.h
 +++ b/src/wpeframework/pxOffscreenNative.h
 @@ -0,0 +1,41 @@
@@ -568,7 +627,7 @@ index e69de29..aad33ce 100755
 +
 +#endif
 diff --git a/src/wpeframework/pxTimerNative.cpp b/src/wpeframework/pxTimerNative.cpp
-index e69de29..beacc21 100755
+index e69de29..beacc21 100644
 --- a/src/wpeframework/pxTimerNative.cpp
 +++ b/src/wpeframework/pxTimerNative.cpp
 @@ -0,0 +1,78 @@
@@ -651,17 +710,19 @@ index e69de29..beacc21 100755
 +    select(0, NULL, NULL, NULL, &tv);
 +}
 diff --git a/src/wpeframework/pxWPECompositor.cpp b/src/wpeframework/pxWPECompositor.cpp
-index e69de29..05f0fac 100644
+index e69de29..73f17f4 100644
 --- a/src/wpeframework/pxWPECompositor.cpp
 +++ b/src/wpeframework/pxWPECompositor.cpp
-@@ -0,0 +1,75 @@
+@@ -0,0 +1,72 @@
 +#include "../pxCore.h"
 +#include "../pxWindow.h"
 +#include "../pxWindowUtil.h"
 +#include "../pxKeycodes.h"
++#include "../../examples/pxScene2d/src/pxContext.h"
 +#include "pxWPECompositor.h"
 +#include "pxWindowNative.h"
 +
++extern pxContext context;
 +using namespace WPEFramework;
 +#define MOD_SHIFT       0x01
 +#define MOD_ALT         0x08
@@ -669,17 +730,11 @@ index e69de29..05f0fac 100644
 +
 +static const char* ltxt = "\t\t1234567890-=\t\tqwertyuiop[]\t\tasdfghjkl;'`\t\\zxcvbnm,./\t\t\t ";
 +static const char* utxt = "\t\t!@#$%^&*()_+\t\tQWERTYUIOP{}\t\tASDFGHJKL:\"~\t|ZXCVBNM<>?\t\t\t ";
-+#if 0
-+static inline std::string keyCodeToString(uint16_t code, bool shift)
-+{
-+    assert(LINUX_KEY_1 == 2 && LINUX_KEY_SPACE == 57);
-+    if (code >= LINUX_KEY_1 && code <= LINUX_KEY_SPACE && *(utxt + code) != '\t')
-+        return std::string(shift ? (utxt + code) : (ltxt + code), 1);
-+    return std::string();
-+}
-+#endif
++
 +void Keyboard::Direct(const uint32_t key, const state action)
 +{
++    static pxSharedContextRef sharedContext = context.createSharedContext();
++    sharedContext->makeCurrent(true);
 +    std::vector<pxWindowNative*> windowVector = pxWindow::getNativeWindows();
 +    std::vector<pxWindowNative*>::iterator i;
 +    unsigned long flags = 0;
@@ -699,6 +754,7 @@ index e69de29..05f0fac 100644
 +            w->onKeyUp(keycodeFromNative(key), flags);
 +        }
 +    }
++    sharedContext->makeCurrent(true);
 +}
 +
 +void Keyboard::Modifiers(uint32_t depressedMods, uint32_t latchedMods, uint32_t lockedMods, uint32_t group)
@@ -731,10 +787,10 @@ index e69de29..05f0fac 100644
 +    }
 +}
 diff --git a/src/wpeframework/pxWPECompositor.h b/src/wpeframework/pxWPECompositor.h
-index e69de29..6c66713 100644
+index e69de29..4ec047a 100644
 --- a/src/wpeframework/pxWPECompositor.h
 +++ b/src/wpeframework/pxWPECompositor.h
-@@ -0,0 +1,334 @@
+@@ -0,0 +1,301 @@
 +/*
 + * Copyright (C) 2019 Metrological
 + * All rights reserved.
@@ -827,39 +883,26 @@ index e69de29..6c66713 100644
 +    , _displayStatus(DisplayStatus::Detached)
 +    , _graphicsSurface(nullptr)
 +    {
-+        struct timeval tv;
-+        gettimeofday(&tv, NULL);
-+        time_t epoch_time = (tv.tv_sec * 1000) + (tv.tv_usec/1000);
-+
-+        const char* callsign(std::getenv("CLIENT_IDENTIFIER"));
-+        if (callsign == nullptr)
-+        {
-+            _display_name = "Spark" + to_string(epoch_time);
-+        }
-+        else
-+        {
-+            const char* delimiter = nullptr;
-+            if ((delimiter = strchr(callsign, ',')) == nullptr)
-+            {
-+                _display_name = callsign;
-+            }
-+            else
-+            {
-+                _display_name = std::string(callsign, (delimiter - callsign));
-+            }
-+        }
 +        Run();
 +    }
++
 +    void CreateDisplayClient()
 +    {
-+        _display = WPEFramework::Compositor::IDisplay::Instance(_display_name);
++        std::string display_name = WPEFramework::Compositor::IDisplay::SuggestedName();
++        if (display_name.empty()) {
++            struct timeval tv;
++            gettimeofday(&tv, NULL);
++            time_t epoch_time = (tv.tv_sec * 1000) + (tv.tv_usec/1000);
++            display_name = "Spark" + to_string(epoch_time);
++        }
++        _display = WPEFramework::Compositor::IDisplay::Instance(display_name);
 +
 +        const char* width_str(std::getenv("SCREEN_WIDTH"));
 +        uint32_t width = (width_str == nullptr ? 1280 : atoi(width_str));
 +        const char* height_str(std::getenv("SCREEN_HEIGHT"));
 +        uint32_t height = (height_str == nullptr ? 720 : atoi(height_str));
 +
-+        _graphicsSurface = _display->Create(_display_name, width, height);
++        _graphicsSurface = _display->Create(display_name, width, height);
 +        printf("%s:%s:%d\n", __FILE__, __func__, __LINE__);
 +        _graphicsSurface->Keyboard(&_keyboardHandle);
 +    }
@@ -896,25 +939,6 @@ index e69de29..6c66713 100644
 +    int FileDescriptor() {
 +        return _display->FileDescriptor();
 +    }
-+#if 0
-+    void WaitForInput(llong waitMS)
-+    {
-+        int fd = _display->FileDescriptor();
-+        fd_set fdSet;
-+        FD_ZERO(&fdSet);
-+        FD_SET(fd, &fdSet);
-+
-+        int waitUntil = waitMS == -1 ? 0 : waitMS;
-+        struct timeval tv;
-+        tv.tv_sec = waitUntil / 1000;
-+        tv.tv_usec = (waitUntil % 1000) * netflix::MicroSecondsPerMillisecond;
-+        const int ret = select(fd+1, &fdSet, NULL, NULL, &tv);
-+        if (ret > 0)
-+        {
-+            _display->Process(1);
-+        }
-+    }
-+#endif
 +    void AddRef() const
 +    {
 +        if (++_refCount == 1)
@@ -945,7 +969,6 @@ index e69de29..6c66713 100644
 +    }
 +
 +private:
-+    std::string _display_name;
 +    Keyboard _keyboardHandle;
 +    WPEFramework::Compositor::IDisplay* _display;
 +    DisplayStatus _displayStatus;
@@ -1070,7 +1093,7 @@ index e69de29..6c66713 100644
 +
 +#endif // PX_WPE_COMPOSITOR_H
 diff --git a/src/wpeframework/pxWindowNative.cpp b/src/wpeframework/pxWindowNative.cpp
-index e69de29..5c32a8c 100644
+index e69de29..86357ed 100644
 --- a/src/wpeframework/pxWindowNative.cpp
 +++ b/src/wpeframework/pxWindowNative.cpp
 @@ -0,0 +1,363 @@
@@ -1270,8 +1293,8 @@ index e69de29..5c32a8c 100644
 +{
 +    initializeEgl();
 +
-+    mEglNativeWindow =
-+          static_cast<EGLNativeWindowType*>(wpeDisplay->GetGraphicsSurface()->Native());
++    mEglNativeWindow = wpeDisplay->GetGraphicsSurface()->Native();
++
 +    mEGLSurface =
 +        (EGLSurface)eglCreateWindowSurface(mEGLDisplay,
 +                       mEGLConfig,
@@ -1438,7 +1461,7 @@ index e69de29..5c32a8c 100644
 +    }
 +}
 diff --git a/src/wpeframework/pxWindowNative.h b/src/wpeframework/pxWindowNative.h
-index e69de29..b20389b 100755
+index e69de29..b20389b 100644
 --- a/src/wpeframework/pxWindowNative.h
 +++ b/src/wpeframework/pxWindowNative.h
 @@ -0,0 +1,120 @@

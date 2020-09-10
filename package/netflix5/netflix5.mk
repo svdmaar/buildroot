@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-NETFLIX5_VERSION = 5602df291df17e50f77c00441ea3260fa1d5cb70
+NETFLIX5_VERSION = cf9bbeb8b00443e5f3aa600984b277892c89ec72
 NETFLIX5_SITE = git@github.com:Metrological/netflix.git
 NETFLIX5_SITE_METHOD = git
 NETFLIX5_LICENSE = PROPRIETARY
@@ -14,28 +14,108 @@ NETFLIX5_SUBDIR = netflix
 NETFLIX5_RESOURCE_LOC = $(call qstrip,${BR2_PACKAGE_NETFLIX5_RESOURCE_LOCATION})
 
 NETFLIX5_CONF_ENV += TOOLCHAIN_DIRECTORY=$(STAGING_DIR)/usr LD=$(TARGET_CROSS)ld
-NETFLIX_CONF_ENV += TARGET_CROSS="$(GNU_TARGET_NAME)-"
+NETFLIX5_CONF_ENV += TARGET_CROSS="$(GNU_TARGET_NAME)-"
+
+NETFLIX5_CONF_OPTS += -DBUILD_REFERENCE=${NETFLIX5_VERSION}
+NETFLIX5_SUPPORTS_IN_SOURCE_BUILD = NO
 
 # TODO: check if all args are really needed.
 NETFLIX5_CONF_OPTS = \
 	-DBUILD_DPI_DIRECTORY=$(@D)/partner/dpi \
-	-DCMAKE_INSTALL_PREFIX=$(@D)/release \
 	-DCMAKE_OBJCOPY="$(TARGET_CROSS)objcopy" \
 	-DCMAKE_STRIP="$(TARGET_CROSS)strip" \
-	-DBUILD_COMPILE_RESOURCES=ON \
-	-DBUILD_SYMBOLS=OFF \
+	-DBUILD_COMPILE_RESOURCES=OFF \
 	-DBUILD_SHARED_LIBS=OFF \
 	-DNRDP_HAS_IPV6=ON \
-	-DNRDP_CRASH_REPORTING="off" \
-	-DNRDP_TOOLS="provisioning" \
-	-DBUILD_DEBUG=OFF -DNRDP_HAS_GIBBON_QA=ON -DNRDP_HAS_MUTEX_STACK=ON -DNRDP_HAS_OBJECTCOUNT=ON \
-	-DBUILD_PRODUCTION=OFF -DNRDP_HAS_QA=OFF -DBUILD_SMALL=OFF -DBUILD_SYMBOLS=ON -DNRDP_HAS_TRACING=OFF \
-	-DNRDP_CRASH_REPORTING=breakpad \
 	-DGIBBON_GRAPHICS_GL_WSYS=egl
 
+NETFLIX5_CONF_ENV += \
+	NODE="$(HOST_DIR)/usr/bin/node" \
+	NPM="$(HOST_DIR)/usr/bin/npm" \
+	
+ifeq ($(BR2_PACKAGE_NETFLIX5_BUILD_ML),y)
 NETFLIX5_CONF_OPTS += \
-	-DDPI_IMPLEMENTATION=gstreamer \
-	-DJS_MINIFY=OFF
+	-DBUILD_COMPILE_RESOURCES=ON \
+	-DNRDP_CRASH_REPORTING=breakpad \
+	-DBUILD_DEBUG=OFF \
+	-DNRDP_HAS_GIBBON_QA=ON \
+	-DNRDP_HAS_MUTEX_STACK=ON \
+	-DNRDP_HAS_OBJECTCOUNT=ON \
+	-DBUILD_PRODUCTION=OFF \
+	-DNRDP_HAS_QA=OFF \
+	-DBUILD_SMALL=OFF \
+	-DBUILD_SYMBOLS=ON \
+	-DNRDP_HAS_TRACING=OFF
+else ifeq ($(BR2_PACKAGE_NETFLIX5_BUILD_DEBUG),y)
+NETFLIX5_CONF_OPTS += \
+	-DBUILD_DEBUG=ON \
+	-DBUILD_SMALL=OFF \
+	-DBUILD_STRIP=OFF \
+	-DBUILD_SYMBOLS=ON \
+	-DBUILD_PRODUCTION=OFF \
+	-DNRDP_HAS_GIBBON_QA=ON \
+	-DNRDP_HAS_MUTEX_STACK=ON \
+	-DNRDP_HAS_OBJECTCOUNT=ON \
+	-DNRDP_HAS_QA=ON \
+	-DNRDP_HAS_TRACING=ON 
+else ifeq ($(BR2_PACKAGE_NETFLIX5_BUILD_RELEASE_DEBUG),y)
+NETFLIX5_CONF_OPTS += \
+	-DBUILD_DEBUG=OFF \
+	-DBUILD_PRODUCTION=ON \
+	-DBUILD_SMALL=OFF \
+	-DBUILD_STRIP=OFF \
+	-DBUILD_SYMBOLS=ON \
+	-DNRDP_HAS_GIBBON_QA=ON \
+	-DNRDP_HAS_MUTEX_STACK=ON \
+	-DNRDP_HAS_OBJECTCOUNT=ON \
+	-DNRDP_HAS_QA=OFF \
+	-DNRDP_HAS_TRACING=ON 
+else ifeq ($(BR2_PACKAGE_NETFLIX5_BUILD_RELEASE),y)
+NETFLIX5_CONF_OPTS += \
+	-DBUILD_DEBUG=OFF \
+	-DBUILD_PRODUCTION=ON \
+	-DBUILD_SMALL=OFF \
+	-DBUILD_STRIP=OFF \
+	-DBUILD_SYMBOLS=OFF \
+	-DNRDP_HAS_GIBBON_QA=OFF \
+	-DNRDP_HAS_MUTEX_STACK=OFF \
+	-DNRDP_HAS_OBJECTCOUNT=ON \
+	-DNRDP_HAS_QA=OFF \
+	-DNRDP_HAS_TRACING=OFF 
+endif
+
+ifeq ($(BR2_PACKAGE_VSS_SDK),y)
+NETFLIX5_CONF_OPTS += \
+	-DUSE_DISPLAY_SETTINGS=1
+endif
+
+ifeq ($(BR2_PACKAGE_NETFLIX5_MINIFY_JS),y)
+NETFLIX5_CONF_OPTS += \
+		-DJS_MINIFY=ON
+NETFLIX5_DEPENDENCIES += \
+		host-nodejs
+		
+define NETFLIX5_INSTALL_NODEJS_MODULES
+	npm_config_build_from_source=true \
+	npm_config_nodedir=$(BUILD_DIR)/host-nodejs-$(NODEJS_VERSION) \
+	npm_config_prefix=$(HOST_DIR)/usr \
+	$(HOST_DIR)/usr/bin/npm  install -g uglify-es@3.0.28 jsdoc
+endef
+
+NETFLIX5_PRE_CONFIGURE_HOOKS += NETFLIX5_INSTALL_NODEJS_MODULES
+endif
+
+ifeq ($(BR2_PACKAGE_NETFLIX5_DISABLE_TOOLS), y)
+NETFLIX5_CONF_OPTS += \
+	-DNRDP_TOOLS=none
+else
+NETFLIX5_CONF_OPTS += \
+	-DNRDP_TOOLS="provisioning"
+endif
+
+NETFLIX5_CONF_OPTS += \
+	-DDPI_IMPLEMENTATION=gstreamer
+
 NETFLIX5_DEPENDENCIES += gstreamer1 gst1-plugins-base gst1-plugins-bad
 
 ifeq ($(BR2_PACKAGE_NETFLIX5_DRM_OCDM), y)
@@ -47,7 +127,7 @@ NETFLIX5_CONF_OPTS += \
         -DDPI_DRM=playready2.5
 endif
 
-ifeq ($(BR2_PACKAGE_NETFLIX5_LIB), y)	
+ifeq ($(BR2_PACKAGE_NETFLIX5_LIB), y)
 NETFLIX5_INSTALL_STAGING = YES
 NETFLIX5_CONF_OPTS += -DGIBBON_MODE=shared
 NETFLIX5_FLAGS = -O3 -fPIC
@@ -65,14 +145,14 @@ NETFLIX5_CONF_OPTS += -DNRDP_HAS_AUDIOMIXER=ON \
                       -DUSE_AUDIOMIXER_NEXUS=ON
 endif
 endif
-ifeq ($(BR2_PACKAGE_WPEFRAMEWORK_COMPOSITOR),y)
+ifeq ($(BR2_PACKAGE_WPEFRAMEWORK_COMPOSITORCLIENT),y)
 NETFLIX5_CONF_OPTS += -DGIBBON_INPUT=wpeframework
 NETFLIX5_DEPENDENCIES += wpeframework-plugins
 else
 NETFLIX5_CONF_OPTS += -DGIBBON_INPUT=devinput
 endif
 
-ifeq ($(BR2_PACKAGE_WPEFRAMEWORK_VIRTUALINPUT)$(BR2_PACKAGE_WPEFRAMEWORK_COMPOSITOR),yn)
+ifeq ($(BR2_PACKAGE_WPEFRAMEWORK_VIRTUALINPUT)$(BR2_PACKAGE_WPEFRAMEWORK_COMPOSITORCLIENT),yn)
 NETFLIX5_CONF_OPTS += -DUSE_NETFLIX_VIRTUAL_KEYBOARD=1
 NETFLIX5_DEPENDENCIES += wpeframework
 endif
@@ -93,7 +173,7 @@ NETFLIX5_CONF_OPTS += \
 	-DGIBBON_PLATFORM=posix \
 	-DGIBBON_GST_PLATFORM=rpi #TODO remove it once GIBBON_PLATFORM for rpi is ready
 
-ifeq ($(BR2_PACKAGE_WPEFRAMEWORK_COMPOSITOR),y)
+ifeq ($(BR2_PACKAGE_WPEFRAMEWORK_COMPOSITORCLIENT),y)
 NETFLIX5_CONF_OPTS += \
         -DGIBBON_GRAPHICS=wpeframework
 ifeq ($(BR2_PACKAGE_WESTEROS),) # WPEFramework for RPI platform supports only either westeros or rpi, hence set this flag
@@ -109,7 +189,7 @@ else
 NETFLIX5_CONF_OPTS += \
 	-DGIBBON_GRAPHICS=rpi \
 	-DGIBBON_EVENTLOOP=virtualinput
-endif	
+endif
 
 ifeq ($(BR2_PACKAGE_GST1_PLUGINS_BAD_PLUGIN_GL)$(BR2_PACKAGE_NETFLIX5_WESTEROS_SINK),yn)
 NETFLIX5_CONF_OPTS += \
@@ -122,7 +202,7 @@ endif
 NETFLIX5_DEPENDENCIES += libgles libegl
 
 else ifeq ($(BR2_PACKAGE_HAS_NEXUS),y)
-ifeq ($(BR2_PACKAGE_WPEFRAMEWORK_COMPOSITOR),y)
+ifeq ($(BR2_PACKAGE_WPEFRAMEWORK_COMPOSITORCLIENT),y)
 NETFLIX5_CONF_OPTS += \
 	-DGIBBON_GRAPHICS=wpeframework
 else ifeq ($(BR2_PACKAGE_WESTEROS),y)
@@ -131,11 +211,11 @@ NETFLIX5_CONF_OPTS += \
 else
 NETFLIX5_CONF_OPTS += \
 	-DGIBBON_GRAPHICS=nexus
-endif	
+endif
 
 NETFLIX5_CONF_OPTS += \
 	-DGST_VIDEO_RENDERING=bcm-nexus \
-	-DGIBBON_PLATFORM=posix 
+	-DGIBBON_PLATFORM=posix
 NETFLIX5_DEPENDENCIES += libgles libegl
 
 ifeq ($(BR2_PACKAGE_HOMECAST_SDK),y)
@@ -161,7 +241,7 @@ NETFLIX5_DEPENDENCIES += libgles libegl
 else ifeq ($(BR2_PACKAGE_KYLIN_GRAPHICS),y)
 NETFLIX5_CONF_OPTS += \
 	-DGIBBON_GRAPHICS=wayland-egl \
-	-DGIBBON_PLATFORM=posix 
+	-DGIBBON_PLATFORM=posix
 NETFLIX5_DEPENDENCIES += libgles libegl
 else ifeq ($(BR2_PACKAGE_HAS_LIBEGL)$(BR2_PACKAGE_HAS_LIBGLES)$(BR2_PACKAGE_MESA3D),yyn)
 NETFLIX5_CONF_OPTS += \
@@ -245,72 +325,75 @@ endef
 
 NETFLIX5_POST_EXTRACT_HOOKS += NETFLIX5_FIX_CONFIG_XMLS
 
+NETFLIX5_BUILD_DIR=$(@D)/netflix/buildroot-build
+NETFLIX5_DATA_DIR=/usr/share/WPEFramework/Netflix
+
 ifeq ($(BR2_PACKAGE_NETFLIX5_LIB),y)
 
-ifeq ($(BR2_PACKAGE_WPEFRAMEWORK_COMPOSITOR),y)
+ifeq ($(BR2_PACKAGE_WPEFRAMEWORK_COMPOSITORCLIENT),y)
 define NETFLIX5_INSTALL_WPEFRAMEWORK_XML
-	cp $(@D)/partner/graphics/wpeframework/graphics.xml $(TARGET_DIR)/root/Netflix/etc/conf
+	cp $(@D)/partner/graphics/wpeframework/graphics.xml $(1)
 endef
 endif
 
-define NETFLIX5_INSTALL_STAGING_CMDS
-	make -C $(@D)/netflix preinstall
-	$(INSTALL) -m 755 $(@D)/netflix/src/platform/gibbon/libnetflix.so $(STAGING_DIR)/usr/lib
-	$(INSTALL) -m 755 $(@D)/netflix/lib/libJavaScriptCoreNetflix.so $(STAGING_DIR)/usr/lib
-	$(INSTALL) -D package/netflix5/netflix.pc $(STAGING_DIR)/usr/lib/pkgconfig/netflix.pc
-	mkdir -p $(STAGING_DIR)/usr/include/netflix/src
-	mkdir -p $(STAGING_DIR)/usr/include/netflix/nrdbase
-	mkdir -p $(STAGING_DIR)/usr/include/netflix/nrd
-	mkdir -p $(STAGING_DIR)/usr/include/netflix/nrdnet
-	#cp -Rpf $(@D)/release/include/* $(STAGING_DIR)/usr/include/netflix/
-	cp -Rpf $(@D)/netflix/include/nrdbase/*.h $(STAGING_DIR)/usr/include/netflix/nrdbase/
-	cp -Rpf $(@D)/netflix/include/nrd/*.h $(STAGING_DIR)/usr/include/netflix/nrd/
-	cp -Rpf $(@D)/netflix/include/nrdnet/*.h $(STAGING_DIR)/usr/include/netflix/nrdnet/
-	cd $(@D)/netflix/src && find ./base/ -name "*.h" -exec cp --parents {} ${STAGING_DIR}/usr/include/netflix/src \;
-	cd $(@D)/netflix/src && find ./nrd/ -name "*.h" -exec cp --parents {} ${STAGING_DIR}/usr/include/netflix/src \;
-	cd $(@D)/netflix/src && find ./net/ -name "*.h" -exec cp --parents {} ${STAGING_DIR}/usr/include/netflix/src \;
-	mkdir -p $(STAGING_DIR)/usr/include/netflix
-	cp -Rpf $(@D)/netflix/src/platform/gibbon/*.h $(STAGING_DIR)/usr/include/netflix
-	cp -Rpf $(@D)/netflix/src/platform/gibbon/bridge/*.h $(STAGING_DIR)/usr/include/netflix
-	cp -Rpf $(@D)/netflix/src/platform/gibbon/text/*.h $(STAGING_DIR)/usr/include/netflix
-	cp -Rpf $(@D)/netflix/src/platform/gibbon/text/freetype/*.h $(STAGING_DIR)/usr/include/netflix
-	mkdir -p $(STAGING_DIR)/usr/include/netflix/gibbon
-	cp -Rpf $(@D)/netflix/src/platform/gibbon/include/gibbon/*.h $(STAGING_DIR)/usr/include/netflix/gibbon
-	find $(STAGING_DIR)/usr/include/netflix/nrdbase/ -name "*.h" -exec sed -i "s/^#include \"\.\.\/\.\.\//#include \"/g" {} \;
-	find $(STAGING_DIR)/usr/include/netflix/nrd/ -name "*.h" -exec sed -i "s/^#include \"\.\.\/\.\.\//#include \"/g" {} \;
-	find $(STAGING_DIR)/usr/include/netflix/nrdnet/ -name "*.h" -exec sed -i "s/^#include \"\.\.\/\.\.\//#include \"/g" {} \;
+define NETFLIX5_INSTALL
+	$(INSTALL) -d $(1)/usr/lib
+	$(INSTALL) -m 755 $(NETFLIX5_BUILD_DIR)/src/platform/gibbon/libnetflix.so $(1)/usr/lib
+	$(INSTALL) -m 755 $(NETFLIX5_BUILD_DIR)/lib/libJavaScriptCoreNetflix.so $(1)/usr/lib
 
-        mkdir -p $(STAGING_DIR)/usr/include/netflix/3rdparty/utf8/
-        cp -Rpf $(@D)/netflix/3rdparty/utf8/* $(STAGING_DIR)/usr/include/netflix/3rdparty/utf8/
+	$(INSTALL) -d $(1)$(NETFLIX5_DATA_DIR)/resources
+	cp -a $(NETFLIX5_BUILD_DIR)/src/platform/gibbon/data/etc $(1)$(NETFLIX5_DATA_DIR)
+	cp -a $(NETFLIX5_BUILD_DIR)/src/platform/gibbon/data/fonts $(1)$(NETFLIX5_DATA_DIR)
+	cp -a $(NETFLIX5_BUILD_DIR)/src/platform/gibbon/data/resources/img $(1)$(NETFLIX5_DATA_DIR)/resources
+	cp -a $(NETFLIX5_BUILD_DIR)/src/platform/gibbon/data/resources/js $(1)$(NETFLIX5_DATA_DIR)/resources
+	cp -a $(NETFLIX5_BUILD_DIR)/src/platform/gibbon/data/resources/html $(1)$(NETFLIX5_DATA_DIR)/resources
 
-	mkdir -p $(TARGET_DIR)/root/Netflix
-	cp -r $(@D)/netflix/src/platform/gibbon/resources/gibbon/fonts $(TARGET_DIR)/root/Netflix
-	cp -r $(@D)/netflix/resources/etc $(TARGET_DIR)/root/Netflix
-	mkdir -p $(TARGET_DIR)/root/Netflix/etc/conf
-	cp -r $(@D)/netflix/src/platform/gibbon/resources/configuration/* $(TARGET_DIR)/root/Netflix/etc/conf
-	cp -r $(@D)/netflix/src/platform/gibbon/resources/gibbon/icu $(TARGET_DIR)/root/Netflix
-	cp -r $(@D)/netflix/src/platform/gibbon/resources $(TARGET_DIR)/root/Netflix
-	cp -r $(@D)/netflix/resources/configuration/* $(TARGET_DIR)/root/Netflix/etc/conf
-
-        $(NETFLIX5_INSTALL_WPEFRAMEWORK_XML)
-	cp $(@D)/netflix/src/platform/gibbon/resources/gibbon/icu/icudt58l/debug/unames.icu $(TARGET_DIR)/root/Netflix/icu/icudt58l
-	cp $(@D)/netflix/src/platform/gibbon/resources/js/*.js $(TARGET_DIR)/root/Netflix/resources/js
-	cp $(@D)/netflix/src/platform/gibbon/resources/default/PartnerBridge.js $(TARGET_DIR)/root/Netflix/resources/js
+	$(call NETFLIX5_INSTALL_WPEFRAMEWORK_XML, $(1)$(NETFLIX5_DATA_DIR)/etc/conf)
 endef
 
-define NETFLIX5_INSTALL_TARGET_CMDS
-	$(INSTALL) -m 755 $(@D)/netflix/src/platform/gibbon/libnetflix.so $(TARGET_DIR)/usr/lib
-	$(INSTALL) -m 755 $(@D)/netflix/lib/libJavaScriptCoreNetflix.so $(TARGET_DIR)/usr/lib
-	$(STRIPCMD) $(TARGET_DIR)/usr/lib/libnetflix.so
+define NETFLIX5_INSTALL_DEV
+	$(call NETFLIX5_INSTALL, $(1))
+
+	$(INSTALL) -d $(1)/usr/lib/pkgconfig
+	$(INSTALL) -D package/netflix5/netflix.pc $(1)/usr/lib/pkgconfig/netflix.pc
+
+	$(INSTALL) -d $(1)/usr/include/netflix
+	cp -a $(NETFLIX5_BUILD_DIR)/include/* $(1)/usr/include/netflix
+	cp -a $(NETFLIX5_BUILD_DIR)/src/platform/gibbon/include/gibbon $(1)/usr/include/netflix
+
+	cp -Rpf $(@D)/netflix/src/platform/gibbon/*.h $(1)/usr/include/netflix
+	cp -Rpf $(@D)/netflix/src/platform/gibbon/bridge/*.h $(1)/usr/include/netflix
+	cp -Rpf $(@D)/netflix/src/platform/gibbon/text/*.h $(1)/usr/include/netflix
+	cp -Rpf $(@D)/netflix/src/platform/gibbon/text/freetype/*.h $(1)/usr/include/netflix
+
+	$(INSTALL) -d $(1)/usr/include/netflix/src
+	cd $(@D)/netflix/src && find ./base/ -name "*.h" -exec cp --parents {} $(1)/usr/include/netflix/src \;
+	cd $(@D)/netflix/src && find ./nrd/ -name "*.h" -exec cp --parents {} $(1)/usr/include/netflix/src \;
+	cd $(@D)/netflix/src && find ./net/ -name "*.h" -exec cp --parents {} $(1)/usr/include/netflix/src \;
+
+	find $(1)/usr/include/netflix/nrdbase/ -name "*.h" -exec sed -i "s/^#include \"\.\.\/\.\.\//#include \"/g" {} \;
+  	find $(1)/usr/include/netflix/nrd/ -name "*.h" -exec sed -i "s/^#include \"\.\.\/\.\.\//#include \"/g" {} \;
+  	find $(1)/usr/include/netflix/nrdnet/ -name "*.h" -exec sed -i "s/^#include \"\.\.\/\.\.\//#include \"/g" {} \;
+
+	$(INSTALL) -d $(1)/usr/include/netflix/3rdparty
+	cp -a $(@D)/netflix/3rdparty/utf8 $(1)/usr/include/netflix/3rdparty
 endef
 
 else
 
-define NETFLIX5_INSTALL_TARGET_CMDS
+define NETFLIX5_INSTALL
 	$(INSTALL) -m 755 $(@D)/netflix/src/platform/gibbon/netflix $(TARGET_DIR)/usr/bin
 endef
 
 endif
+
+define NETFLIX5_INSTALL_STAGING_CMDS
+	$(call NETFLIX5_INSTALL_DEV, ${STAGING_DIR})
+endef
+
+define NETFLIX5_INSTALL_TARGET_CMDS
+	$(call NETFLIX5_INSTALL, ${TARGET_DIR})
+endef
 
 define NETFLIX5_PREPARE_DPI
 	mkdir -p $(TARGET_DIR)/root/Netflix/dpi
@@ -318,5 +401,22 @@ define NETFLIX5_PREPARE_DPI
 endef
 
 NETFLIX5_POST_INSTALL_TARGET_HOOKS += NETFLIX5_PREPARE_DPI
+
+ifeq ($(BR2_PACKAGE_NETFLIX5_CREATE_BINARY_ML_DELIVERY),y)
+ML_DELIVERY_NETFLIX5_SIGNATURE=${NETFLIX5_VERSION}
+ML_DELIVERY_NETFLIX5_PACKAGE=${NETFLIX5_NAME}
+ML_DELIVERY_NETFLIX5_DIR=${STAGING_DIR}/${ML_DELIVERY_NETFLIX5_PACKAGE}
+ML_DELIVERY_NETFLIX5_TARBALL=${BINARIES_DIR}/${ML_DELIVERY_NETFLIX5_PACKAGE}-${ML_DELIVERY_NETFLIX5_SIGNATURE}.tar.xz
+
+define CREATE_BINARY_ML_DELIVERY_NETFLIX5
+	rm -rf ${ML_DELIVERY_NETFLIX5_DIR} ${ML_DELIVERY_NETFLIX5_TARBALL}
+	mkdir -p ${ML_DELIVERY_NETFLIX5_DIR}/usr/lib/pkgconfig/
+	mkdir -p ${ML_DELIVERY_NETFLIX5_DIR}/usr/include/
+	$(call NETFLIX5_INSTALL_DEV, ${ML_DELIVERY_NETFLIX5_DIR})
+	tar -cJf ${ML_DELIVERY_NETFLIX5_TARBALL} -C ${STAGING_DIR} ${ML_DELIVERY_NETFLIX5_PACKAGE}
+endef
+
+NETFLIX5_POST_INSTALL_TARGET_HOOKS += CREATE_BINARY_ML_DELIVERY_NETFLIX5
+endif
 
 $(eval $(cmake-package))
