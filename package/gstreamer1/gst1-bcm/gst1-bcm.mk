@@ -176,7 +176,8 @@ define GST1_BCM_INSTALL_SVP_DEV
     fi 
 endef
 
-GST1_BCM_POST_INSTALL_STAGING_HOOKS += GST1_BCM_INSTALL_SVP_DEV
+# TODO: check if file exists, only then copy, or copy only in SVP case
+#GST1_BCM_POST_INSTALL_STAGING_HOOKS += GST1_BCM_INSTALL_SVP_DEV
 endif
 
 ifeq ($(BR2_PACKAGE_VSS_SDK_MOVE_GSTREAMER),y)
