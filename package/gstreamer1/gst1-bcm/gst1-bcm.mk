@@ -4,6 +4,12 @@
 #
 ################################################################################
 
+ifneq ($(filter y,$(BR2_PACKAGE_GST1_BCM_UNIFIED_VERSION)),)
+GST1_BCM_SITE = git@github.com:Metrological/bcm-gstreamer.git
+GST1_BCM_VERSION = 1dba31cd2adbab26c463f14e68cf22dc71b7db2b
+else
+GST1_BCM_SITE = git@github.com:Metrological/gstreamer-plugins-soc.git
+
 ifeq ($(BR2_PACKAGE_UMA_SDK),y)
 GST1_BCM_VERSION = 17.1-7
 else ifeq ($(BR2_PACKAGE_BCM_REFSW_16_1),y)
@@ -20,23 +26,30 @@ else ifeq ($(BR2_PACKAGE_BCM_REFSW_17_3_RDK),y)
 GST1_BCM_VERSION = 17.3-rdkv-20180327
 else ifeq ($(BR2_PACKAGE_BCM_REFSW_18_2),y)
 GST1_BCM_VERSION = 18.2-rdkv-20180727
+else ifeq ($(BR2_PACKAGE_BCM_REFSW_19_1),y)
+GST1_BCM_VERSION = 19.1-rdkv_20190409
 else ifneq ($(filter y,$(BR2_PACKAGE_ACN_SDK)),)
-GST1_BCM_VERSION = 18.2-rdkv-20180727
+GST1_BCM_VERSION = 17.1-5
 else ifneq ($(filter y,$(BR2_PACKAGE_HOMECAST_SDK)),)
 GST1_BCM_VERSION = 961a36dcd30c91330b8a9503e12ec3ddb30b70b6
 else ifneq ($(filter y,$(BR2_PACKAGE_VSS_SDK)),)
-GST1_BCM_VERSION = 602150ea6d1d616609e006c9b3acde1b68bbcc71
+GST1_BCM_VERSION = 248e2f231a2412d52c178590856327c89a6df592
 else ifneq ($(filter y,$(BR2_PACKAGE_EVASION_SDK)),)
+GST1_BCM_VERSION = 18.2-rdkv-20180727
+else ifneq ($(filter y,$(BR2_PACKAGE_VFTV_SDK)),)
+GST1_BCM_VERSION = 18.2-rdkv-20180727
+else ifneq ($(filter y,$(BR2_PACKAGE_ACN_5202_SDK)),)
 GST1_BCM_VERSION = 18.2-rdkv-20180727
 else
 GST1_BCM_VERSION = 15.2
 endif
 
-GST1_BCM_SITE = git@github.com:Metrological/gstreamer-plugins-soc.git
+endif
+
 GST1_BCM_SITE_METHOD = git
 GST1_BCM_LICENSE = PROPRIETARY
 GST1_BCM_INSTALL_STAGING = YES
-GST1_BCM_DEPENDENCIES = gstreamer1 gst1-plugins-base libcurl
+GST1_BCM_DEPENDENCIES = gstreamer1 gst1-plugins-base
 
 ifeq ($(BR2_PACKAGE_BCM_REFSW),y)
 GST1_BCM_DEPENDENCIES += bcm-refsw
@@ -62,10 +75,13 @@ GST1_BCM_AUTORECONF = YES
 GST1_BCM_CONF_ENV += \
 	$(BCM_REFSW_MAKE_ENV) \
 	GSTREAMER_REFSW_SERVER_NXCLIENT_SUPPORT=y \
-	PKG_CONFIG_SYSROOT_DIR=$(STAGING_DIR) 
+	PKG_CONFIG_SYSROOT_DIR=$(STAGING_DIR)
 
 ifeq ($(BR2_PACKAGE_GST1_BCM_ENABLE_SVP),y)
 GST1_BCM_CONF_ENV += GST_SVP_SUPPORT=y
+ifeq ($(BR2_PACKAGE_GST1_BCM_ENABLE_SVP_SECBUF),y)
+GST1_BCM_CONF_ENV += GST_SVP_SECBUF_SUPPORT=y
+endif
 endif
 
 GST1_BCM_MAKE_ENV += \
@@ -104,8 +120,7 @@ GST1_BCM_CONF_OPTS = \
 	--disable-tsdemux \
 	--disable-tsparse \
 	--disable-playersinkbin \
-	--disable-gfxsink \
-	--disable-streamextractor
+	--disable-gfxsink
 
 ifeq ($(BR2_PACKAGE_GST1_BCM_AUDFILTER),y)
 GST1_BCM_CONF_OPTS += --enable-audfilter
@@ -145,10 +160,23 @@ endif
 
 ifeq ($(BR2_PACKAGE_GST1_BCM_ENABLE_SVP),y)
 GST1_BCM_CONF_OPTS += --enable-svp
+ifeq ($(BR2_PACKAGE_GST1_BCM_ENABLE_SVP_SECBUF),y)
+GST1_BCM_CONF_OPTS += --enable-svp-secbuf
+endif
 endif
 
 ifeq ($(BR2_PACKAGE_HAS_OPUS_DECODER),)
 GST1_BCM_PKGDIR = "$(TOP_DIR)/package/gstreamer1/gst1-bcm"
+
+define GST1_BCM_INSTALL_SVP_DEV
+    if [ -d "${@D}/reference" ] ; then \
+    	$(INSTALL) -D -m 0644 ${@D}/reference/svpmeta/src/gst_brcm_svp_meta.h $(STAGING_DIR)/usr/include ; \
+    else \
+    	$(INSTALL) -D -m 0644 ${@D}/svpmeta/src/gst_brcm_svp_meta.h $(STAGING_DIR)/usr/include ; \
+    fi 
+endef
+
+GST1_BCM_POST_INSTALL_STAGING_HOOKS += GST1_BCM_INSTALL_SVP_DEV
 endif
 
 ifeq ($(BR2_PACKAGE_VSS_SDK_MOVE_GSTREAMER),y)
@@ -161,10 +189,26 @@ GST1_BCM_CONF_OPTS += \
 	--includedir=/usr/include/gstreamer-wpe \
 	--program-prefix wpe
 define GST1_BCM_APPLY_VSS_FIX
- package/vss-sdk/gst1/brcm.no_opus.fix.sh ${@D}
  package/vss-sdk/gst1/brcm.fix.sh ${@D}
 endef
-GST1_BCM_POST_PATCH_HOOKS += GST1_BCM_APPLY_VSS_FIX
+GST1_BCM_PRE_CONFIGURE_HOOKS += GST1_BCM_APPLY_VSS_FIX
+endif
+
+ifeq ($(BR2_PACKAGE_GST1_BCM_CREATE_BINARY_ML_DELIVERY),y)
+ML_DELIVERY_GST1_BCM_SIGNATURE=${GST1_BCM_VERSION}
+ML_DELIVERY_GST1_BCM_PACKAGE=${GST1_BCM_NAME}
+ML_DELIVERY_GST1_BCM_DIR=${STAGING_DIR}/${ML_DELIVERY_GST1_BCM_PACKAGE}
+ML_DELIVERY_GST1_BCM_TARBALL=${BINARIES_DIR}/${ML_DELIVERY_GST1_BCM_PACKAGE}-${ML_DELIVERY_GST1_BCM_SIGNATURE}.tar.xz
+
+define CREATE_BINARY_ML_DELIVERY_GST1_BCM
+	rm -rf ${ML_DELIVERY_GST1_BCM_DIR} ${ML_DELIVERY_GST1_BCM_TARBALL}
+	mkdir -p ${ML_DELIVERY_GST1_BCM_DIR}
+ 	$(GST1_BCM_MAKE_ENV) $(MAKE) DESTDIR=${ML_DELIVERY_GST1_BCM_DIR} install -C ${@D}
+	ln -s gstreamer-wpe/gst_brcm_svp_meta.h ${ML_DELIVERY_GST1_BCM_DIR}/usr/include/gst_brcm_svp_meta.h
+	tar -cJf ${ML_DELIVERY_GST1_BCM_TARBALL} -C ${STAGING_DIR} ${ML_DELIVERY_GST1_BCM_PACKAGE}
+endef
+
+GST1_BCM_POST_INSTALL_TARGET_HOOKS += CREATE_BINARY_ML_DELIVERY_GST1_BCM
 endif
 
 $(eval $(autotools-package))
