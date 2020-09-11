@@ -4,10 +4,10 @@
 #
 ################################################################################
 
-AMAZON_BACKEND_VERSION = e9c61bc404bc233136f6e77609b429a3bedea8cb
+AMAZON_BACKEND_VERSION = 6916e98947a38c1800f9906e6d07e1429cd621b1
 AMAZON_BACKEND_SITE = git@github.com:Metrological/amazon-backend.git
 AMAZON_BACKEND_SITE_METHOD = git
-AMAZON_BACKEND_DEPENDENCIES = 
+AMAZON_BACKEND_DEPENDENCIES =
 AMAZON_BACKEND_LICENSE = PROPRIETARY
 AMAZON_BACKEND_INSTALL_STAGING = YES
 
@@ -30,4 +30,3 @@ AMAZON_BACKEND_CONF_OPTS += -DAMAZON_GST_LIBRARY_PREFIX="wpe"
 endif
 
 $(eval $(cmake-package))
- 
