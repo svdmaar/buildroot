@@ -4,12 +4,12 @@
 #
 ################################################################################
 
-AMAZON_VERSION = f67706962f328e40ee91d558b74c1ebeaa3274ac
+AMAZON_VERSION = 09211c3a93442901700b3813919295357de51961
 AMAZON_SITE_METHOD = git
 AMAZON_SITE = git@github.com:Metrological/amazon.git
 AMAZON_INSTALL_STAGING = YES
 AMAZON_INSTALL_TARGET = YES
-AMAZON_DEPENDENCIES = host-cmake zlib jpeg libcurl libpng wpeframework gstreamer1 
+AMAZON_DEPENDENCIES = host-cmake zlib jpeg libcurl libpng wpeframework gstreamer1
 
 ifeq ($(BR2_PACKAGE_RPI_USERLAND),y)
  AMAZON_DEPENDENCIES += rpi-userland
@@ -63,11 +63,14 @@ ifneq ($(BR2_PACKAGE_HAS_PLAYREADY),y)
  AMAZON_DEPENDENCIES += playready
 endif
  AMAZON_BACKEND = mpb-drm
+ AMAZON_BACKEND_TEST = VideoPlayerMediaPipelineBackendUnitTests
 else ifeq  ($(BR2_PACKAGE_AMAZON_BACKEND_NO_DRM),y)
  AMAZON_DEPENDENCIES += libgles libegl gstreamer1 gst1-plugins-base gst1-plugins-good gst1-plugins-bad
  AMAZON_BACKEND = mpb-no-drm
+ AMAZON_BACKEND_TEST = VideoPlayerMediaPipelineBackendUnitTests
 else ifeq  ($(BR2_PACKAGE_AMAZON_BACKEND_FAKE),y)
  AMAZON_BACKEND = fake-mpb
+ AMAZON_BACKEND_TEST = VideoPlayerFakeBackendUnitTests
 else
  $(error No backend specified)
 endif
@@ -118,7 +121,7 @@ define AMAZON_CONFIGURE_CMDS
     $(call GENERATE_LOCAL_CONFIG)
     $(call GENERATE_BOOST_CONFIG)
     $(call GENERATE_BUILD_CONFIG)
-    $(call AMAZON_GET_SOURCES) 
+    $(call AMAZON_GET_SOURCES)
     $(call AMAZON_CLEAN_COMPONENTS)
 endef
 
@@ -139,7 +142,6 @@ endif
 
 ifeq ($(BR2_PACKAGE_AMAZON_BACKEND_DRM),y)
  AMAZON_CXX_FLAGS += -DHAVE_PLAYREADY
-#AMAZON_CXX_FLAGS += -DAMP_MEDIA_PIPELINE_USE_DECRYPTION_PIPELINE
 endif
 
 ifeq ($(BR2_PACKAGE_BCM_BME),y)
@@ -153,12 +155,16 @@ ifeq ($(BR2_PACKAGE_AMAZON_BACKEND),y)
   AMAZON_CXX_FLAGS += -lamazon-backend -ldl
   SDK_INCLUDE_DIRECTORIES += ${STAGING_DIR}/usr/include/refsw
 endif
+
+ifeq ($(BR2_PACKAGE_AMAZON_BACKEND_FAKE),y)
+AMAZON_CXX_FLAGS += -lcurl -lssl -lcrypto -ldl
+endif
 ################################################################################
 # DCP/DPP
 ################################################################################
 define AMAZON_BUILD_DPC_DPP
-  $(call AMAZON_MAKE, dpp, BUILD_TYPE=$(AMAZON_BUILD_TYPE))
-  $(call AMAZON_MAKE, dpc, BUILD_TYPE=$(AMAZON_BUILD_TYPE))
+  $(call AMAZON_MAKE, dpp, BACKEND=$(AMAZON_BACKEND) BUILD_TYPE=$(AMAZON_BUILD_TYPE))
+  $(call AMAZON_MAKE, dpc, BACKEND=$(AMAZON_BACKEND) BUILD_TYPE=$(AMAZON_BUILD_TYPE))
 endef
 
 ifeq ($(AMAZON_BUILD_TYPE),testing)
@@ -169,11 +175,12 @@ define AMAZON_INSTALL_TESTS
    $(INSTALL) -v -m 750 -D $(@D)/build/ruby/ruby-with-${AMAZON_BACKEND}/$(AMAZON_BUILD_TYPE)/CoreUnitTests/CoreUnitTests $(1)/usr/bin
    $(INSTALL) -v -m 750 -D $(@D)/build/ruby/ruby-with-${AMAZON_BACKEND}/$(AMAZON_BUILD_TYPE)/CryptoUnitTests/CryptoUnitTests $(1)/usr/bin
    $(INSTALL) -v -m 750 -D $(@D)/build/ruby/ruby-with-${AMAZON_BACKEND}/$(AMAZON_BUILD_TYPE)/HawaiiUnitTests/HawaiiUnitTests $(1)/usr/bin
-   $(INSTALL) -v -m 750 -D $(@D)/build/ruby/ruby-with-${AMAZON_BACKEND}/$(AMAZON_BUILD_TYPE)/HawaiiUnitTests/HawaiiBindingsIntegrationTests $(1)/usr/bin
+   $(INSTALL) -v -m 750 -D $(@D)/build/ruby/ruby-with-${AMAZON_BACKEND}/$(AMAZON_BUILD_TYPE)/HawaiiBindingsIntegrationTests/HawaiiBindingsIntegrationTests $(1)/usr/bin
    $(INSTALL) -v -m 750 -D $(@D)/build/ruby/ruby-with-${AMAZON_BACKEND}/$(AMAZON_BUILD_TYPE)/NetworkUnitTests/NetworkUnitTests $(1)/usr/bin
    $(INSTALL) -v -m 750 -D $(@D)/build/ruby/ruby-with-${AMAZON_BACKEND}/$(AMAZON_BUILD_TYPE)/VideoPlayerFrontendUnitTests/VideoPlayerFrontendUnitTests $(1)/usr/bin
-   $(INSTALL) -v -m 750 -D $(@D)/build/ruby/ruby-with-${AMAZON_BACKEND}/$(AMAZON_BUILD_TYPE)/VideoPlayerMediaPipelineBackendUnitTests/VideoPlayerMediaPipelineBackendUnitTests $(1)/usr/bin
+   $(INSTALL) -v -m 750 -D $(@D)/build/ruby/ruby-with-${AMAZON_BACKEND}/$(AMAZON_BUILD_TYPE)/$(AMAZON_BACKEND_TEST)/$(AMAZON_BACKEND_TEST) $(1)/usr/bin
    $(INSTALL) -v -m 750 -D $(@D)/build/ruby/ruby-with-${AMAZON_BACKEND}/$(AMAZON_BUILD_TYPE)/VideoPlayerUnitTests/VideoPlayerUnitTests $(1)/usr/bin
+   $(INSTALL) -v -m 750 -D $(@D)/build/ruby/ruby-with-${AMAZON_BACKEND}/$(AMAZON_BUILD_TYPE)/VideoPlayerIntegrationTests/VideoPlayerIntegrationTests $(1)/usr/bin
    $(INSTALL) -v -m 750 -D $(@D)/build/ruby/ruby-with-${AMAZON_BACKEND}/$(AMAZON_BUILD_TYPE)/XmlUnitTests/XmlUnitTests $(1)/usr/bin
 endef
 endif
@@ -185,8 +192,7 @@ RUBY_MAKE_OPTIONS=\
   RUBY_USING_IGNITION_CURL=OFF \
   HAWAII_BINDINGS_LIBS="${HAWAII_BINDINGS_LIBS}" \
   SDK_INCLUDE_DIRECTORIES="${SDK_INCLUDE_DIRECTORIES}" \
-  SDK_FLAGS="${AMAZON_CXX_FLAGS}" \
-  HAVE_PLAYREADY=1
+  SDK_FLAGS="${AMAZON_CXX_FLAGS}"
 
 define AMAZON_BUILD_RUBY
   $(call AMAZON_BUILD_DPC_DPP)

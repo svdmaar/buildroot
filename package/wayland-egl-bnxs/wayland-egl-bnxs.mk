@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-WAYLAND_EGL_BNXS_VERSION = ab76649310f6688670b5c88cfac184735afc4d21
+WAYLAND_EGL_BNXS_VERSION = 5e7062ad1788e441b90521f4d368f017ff827298
 WAYLAND_EGL_BNXS_SITE_METHOD = git
 WAYLAND_EGL_BNXS_SITE = git@github.com:Metrological/wayland-egl-bnxs.git
 WAYLAND_EGL_BNXS_INSTALL_STAGING = YES
@@ -15,8 +15,13 @@ WAYLAND_EGL_BNXS_DEPENDENCIES = host-pkgconf host-autoconf wayland bcm-refsw
 WAYLAND_EGL_BNXS_CONF_OPTS = \
     --prefix=/usr/ \
     --disable-silent-rules \
-    --disable-dependency-tracking \
-    --enable-refsw_latest
+    --disable-dependency-tracking
+
+ifeq ($(BR2_PACKAGE_BCM_REFSW_19_1),y)
+WAYLAND_EGL_BNXS_CONF_OPTS += --enable-refsw19_1
+else
+WAYLAND_EGL_BNXS_CONF_OPTS += --enable-refsw_latest
+endif
 
 WAYLAND_EGL_BNXS_INCLUDES += \
 	-I$(STAGING_DIR)/usr/include/interface/khronos/include/bcg_abstract/ \
@@ -48,13 +53,18 @@ WAYLAND_EGL_BNXS_MAKE_ENV = \
     REFSW_VERSION="$(STAGING_DIR)/usr/share/wayland-egl" \
     PKG_CONFIG_SYSROOT_DIR="$(STAGING_DIR)"
 
+ifeq ($(BR2_PACKAGE_BCM_REFSW_18_2)$(BR2_PACKAGE_BCM_REFSW_19_1),y)
+	WAYLAND_EGL_BNXS_CFLAGS += -DEMBEDDED_SETTOP_BOX
+	WAYLAND_EGL_BNXS_CXXFLAGS += -DEMBEDDED_SETTOP_BOX
+endif
+
 WAYLAND_EGL_BNXS_MAKE_OPTS = \
 	CC="$(TARGET_CC)" \
 	ARCH=$(KERNEL_ARCH) \
 	PREFIX="$(TARGET_DIR)" \
 	CROSS_COMPILE="$(TARGET_CROSS)" \
 	CONFIG_PREFIX="$(TARGET_DIR)" \
-    CFLAGS="$(TARGET_CFLAGS) $(WAYLAND_EGL_BNXS_CFLAGS)" \
+	CFLAGS="$(TARGET_CFLAGS) $(WAYLAND_EGL_BNXS_CFLAGS)" \
 	CXXFLAGS="$(TARGET_CXXFLAGS) $(WAYLAND_EGL_BNXS_CXXFLAGS)"
 
 define WAYLAND_EGL_BNXS_RUN_AUTOCONF
