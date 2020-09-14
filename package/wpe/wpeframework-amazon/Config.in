@@ -6,4 +6,21 @@ menuconfig BR2_PACKAGE_WPEFRAMEWORK_AMAZON
 
 if BR2_PACKAGE_WPEFRAMEWORK_AMAZON
 # options for the plugin
+menu "Options"
+config BR2_PACKAGE_WPEFRAMEWORK_AMAZON_DTID
+	string "DTID"
+	default "UnknownDTID"
+
+config BR2_PACKAGE_WPEFRAMEWORK_AMAZON_MODEL
+	string "model name"
+	default "UnknownModel"
+
+config BR2_PACKAGE_WPEFRAMEWORK_AMAZON_MANUFACTURER
+	string "manufacturer"
+	default "UnknownManufacturer"
+
+config BR2_PACKAGE_WPEFRAMEWORK_AMAZON_CHIPSET
+	string "chipset"
+	default "UnknownChipset"
+endmenu
 endif
