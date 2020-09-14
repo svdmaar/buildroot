@@ -170,14 +170,17 @@ GST1_BCM_PKGDIR = "$(TOP_DIR)/package/gstreamer1/gst1-bcm"
 
 define GST1_BCM_INSTALL_SVP_DEV
     if [ -d "${@D}/reference" ] ; then \
-    	$(INSTALL) -D -m 0644 ${@D}/reference/svpmeta/src/gst_brcm_svp_meta.h $(STAGING_DIR)/usr/include ; \
+       if [ -f "${@D}/reference/svpmeta/src/gst_brcm_svp_meta.h" ] ; then \
+    	   $(INSTALL) -D -m 0644 ${@D}/reference/svpmeta/src/gst_brcm_svp_meta.h $(STAGING_DIR)/usr/include ; \
+   	 fi \
     else \
-    	$(INSTALL) -D -m 0644 ${@D}/svpmeta/src/gst_brcm_svp_meta.h $(STAGING_DIR)/usr/include ; \
+       if [ -f "${@D}/svpmeta/src/gst_brcm_svp_meta.h" ] ; then \
+    	   $(INSTALL) -D -m 0644 ${@D}/svpmeta/src/gst_brcm_svp_meta.h $(STAGING_DIR)/usr/include ; \
+   	 fi \
     fi 
 endef
 
-# TODO: check if file exists, only then copy, or copy only in SVP case
-#GST1_BCM_POST_INSTALL_STAGING_HOOKS += GST1_BCM_INSTALL_SVP_DEV
+GST1_BCM_POST_INSTALL_STAGING_HOOKS += GST1_BCM_INSTALL_SVP_DEV
 endif
 
 ifeq ($(BR2_PACKAGE_VSS_SDK_MOVE_GSTREAMER),y)
