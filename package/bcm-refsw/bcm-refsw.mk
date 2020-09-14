@@ -4,7 +4,9 @@
 #
 ################################################################################
 
-ifeq ($(BR2_PACKAGE_BCM_REFSW_13_1),y)
+ifeq ($(BR2_PACKAGE_BCM_REFSW_CUSTOM_VERSION),y)
+BCM_REFSW_VERSION = $(BR2_PACKAGE_BCM_REFSW_CUSTOM_REPO_VERSION)
+else ifeq ($(BR2_PACKAGE_BCM_REFSW_13_1),y)
 BCM_REFSW_VERSION = 13.1
 else ifeq ($(BR2_PACKAGE_BCM_REFSW_13_4),y)
 BCM_REFSW_VERSION = 13.4-1
@@ -34,6 +36,8 @@ BCM_REFSW_VERSION = 17.4-4
 endif
 else ifeq ($(BR2_PACKAGE_BCM_REFSW_18_2),y)
 BCM_REFSW_VERSION = 18.2
+else ifeq ($(BR2_PACKAGE_BCM_REFSW_19_1),y)
+BCM_REFSW_VERSION = 19.1
 else
 BCM_REFSW_VERSION = 16.2-7
 endif
@@ -41,7 +45,7 @@ endif
 BCM_REFSW_SITE = git@github.com:Metrological/bcm-refsw.git
 BCM_REFSW_SITE_METHOD = git
 
-BCM_REFSW_DEPENDENCIES = linux host-pkgconf host-flex host-bison host-gperf
+BCM_REFSW_DEPENDENCIES = linux host-pkgconf host-flex host-bison host-gperf libcurl
 BCM_REFSW_LICENSE = PROPRIETARY
 BCM_REFSW_INSTALL_STAGING = YES
 BCM_REFSW_INSTALL_TARGET = YES
@@ -60,6 +64,18 @@ else
 BCM_PMLIB_VERSION = 26
 endif
 
+ifeq ($(BR2_PACKAGE_BCM_REFSW_DEBUG),y)
+BCM_REFSW_DEBUG_FLAGS += \
+	-DBDBG_DEBUG_BUILD
+
+BCM_REFSW_MAKE_ENV += \
+	B_REFSW_VERBOSE=y
+else
+BCM_REFSW_MAKE_ENV += \
+	B_REFSW_VERBOSE=n \
+	B_REFSW_DEBUG_LEVEL=wrn
+endif
+
 BCM_REFSW_CONF_OPTS += \
 	CROSS_COMPILE="${TARGET_CROSS}" \
 	LINUX=${LINUX_DIR} \
@@ -68,21 +84,19 @@ BCM_REFSW_CONF_OPTS += \
 BCM_REFSW_MAKE_ENV += \
 	B_REFSW_ARCH=$(ARCH)-linux \
 	B_REFSW_CROSS_COMPILE="${TARGET_CROSS}" \
-	B_REFSW_VERBOSE=n \
-	B_REFSW_DEBUG_LEVEL=wrn \
 	BCHP_VER=$(BCM_REFSW_PLATFORM_REV) \
 	NEXUS_TOP="$(BCM_REFSW_DIR)/nexus" \
 	NEXUS_PLATFORM=$(BCM_REFSW_PLATFORM) \
 	NEXUS_MODE=proxy \
 	NEXUS_HEADERS=y \
-	NEXUS_EXTRA_CFLAGS="$(TARGET_CFLAGS) -Wno-error=undef" \
+	NEXUS_EXTRA_CFLAGS="$(TARGET_CFLAGS) -Wno-error=undef $(BCM_REFSW_DEBUG_FLAGS)"\
 	NEXUS_EXTRA_LDFLAGS="$(TARGET_LDFLAGS)" \
 	VCX=$(BCM_REFSW_PLATFORM_VC) \
 	V3D_EXTRA_CFLAGS="$(TARGET_CFLAGS)" \
-	V3D_EXTRA_LDFLAGS="$(TARGET_LDFLAGS)"
+	V3D_EXTRA_LDFLAGS="$(TARGET_LDFLAGS) $(BCM_REFSW_DEBUG_FLAGS)" \
 
 ifneq ($(BR2_PACKAGE_BCM_REFSW_18_2),y)
-BCM_REFSW_MAKE_ENV += NEXUS_IR_INPUT_EXTENSION_INC="${@D}/nexus/extensions/insert_ir_input/insert_ir_input.inc"
+# BCM_REFSW_MAKE_ENV += NEXUS_IR_INPUT_EXTENSION_INC="${@D}/nexus/extensions/insert_ir_input/insert_ir_input.inc"
 endif
 
 ifeq ($(BR2_PACKAGE_BCM_REFSW_15_2),y)
@@ -181,7 +195,6 @@ endef
 
 define BCM_REFSW_INSTALL_TARGET_CMDS
 	$(call BCM_REFSW_INSTALL_NEXUS,             $(TARGET_DIR))
-	$(call BCM_REFSW_INSTALL_WAKEUP,            $(TARGET_DIR))
 	$(call BCM_REFSW_INSTALL_GRAPHICS,          $(TARGET_DIR))
 	$(call BCM_REFSW_INSTALL_NXSERVER,          $(TARGET_DIR))
 	$(call BCM_REFSW_INSTALL_EGLCUBE,           $(TARGET_DIR))
@@ -192,6 +205,8 @@ define BCM_REFSW_INSTALL_TARGET_CMDS
         $(call BCM_REFSW_INSTALL_PLAYREADY30,       $(TARGET_DIR))
         $(call BCM_REFSW_INSTALL_DRMROOTFS,         $(TARGET_DIR))
         $(call BCM_REFSW_INSTALL_PRDYHTTP,          $(TARGET_DIR))
+        $(call BCM_REFSW_INSTALL_SAGE_BINS,         $(TARGET_DIR))
+
 endef
 
 $(eval $(generic-package))
