@@ -1,13 +1,21 @@
 #!/bin/sh
 
 export SOURCE=/UserApps/metrological
-export LD_LIBRARY_PATH=$SOURCE/usr/lib:/lib:/usr/lib:$SOURCE/lib:$SOURCE/usr/lib/wpeframework/plugins:$SOURCE/usr/lib/wpeframework/proxystubs
+export LD_LIBRARY_PATH=$SOURCE/usr/share/ignition/lib:$SOURCE/usr/lib:/lib:/usr/lib:$SOURCE/lib:$SOURCE/usr/lib/wpeframework/plugins:$SOURCE/usr/lib/wpeframework/proxystubs
 export PATH=$SOURCE/usr/bin:$PATH
 export GST_PLUGIN_SCANNER=$SOURCE/usr/libexec/gstreamer-1.0/gst-plugin-scanner
 export GST_PLUGIN_SYSTEM_PATH=$SOURCE/usr/lib/gstreamer-1.0
-
 export XKB_CONFIG_ROOT=$SOURCE/usr/share/X11/xkb
 export V3D_DRM_DISABLE=1
+
+# FIXME: Proper user should be assign by integrator, for now use 
+#        "playback" user to run the ignition implentation
+export IGNITION_USER="playback"
+export IGNITION_GROUP=$IGNITION_USER
+chown -R $IGNITION_USER:$IGNITION_GROUP $SOURCE/usr/share/ignition
+# FIXME: ignition needs a universal vault implementation which doesn't exist at this 
+#        time of writing. For now use the "netflix" sage vault
+export NETFLIX_VAULT=/tmp/netflix.bin
 
 export NF_GST_AUDIO_PCM_TRANSPORT_UNIT_OVERRIDE=5
 export NF_GST_AUDIO_PCM_LATENCY_OVERRIDE=170
