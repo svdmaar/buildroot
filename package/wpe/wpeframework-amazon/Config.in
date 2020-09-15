@@ -8,9 +8,10 @@ if BR2_PACKAGE_WPEFRAMEWORK_AMAZON
 # options for the plugin
 menu "Options"
 config BR2_PACKAGE_WPEFRAMEWORK_AMAZON_DTID
-    help "DTID will be provided by amazon, test DTID's can be found in docs on the partner central")
 	string "DTID"
 	default "UnknownDTID"
+    help
+        DTID will be provided by amazon, test DTID's can be found in docs on the partner central
 
 config BR2_PACKAGE_WPEFRAMEWORK_AMAZON_MODEL
 	string "model name"
@@ -25,20 +26,24 @@ config BR2_PACKAGE_WPEFRAMEWORK_AMAZON_CHIPSET
 	default "UnknownChipset"
 
 config BR2_PACKAGE_WPEFRAMEWORK_AMAZON_USER
-    help "The user that amazon prime should use (root is not allowed)")
 	string "user"
+    help
+        The user that amazon prime should use (root is not allowed)
 
 config BR2_PACKAGE_WPEFRAMEWORK_AMAZON_GROUP
-    help "The group that amazon prime user should use (root is not allowed)")
 	string "group"
+    help
+        The group that amazon prime user should use (root is not allowed)
 
 config BR2_PACKAGE_WPEFRAMEWORK_AMAZON_CA_BUNDLE_PATH
-    help "Path where ca-certitificats.cert is located)
 	string "ca bundle path"
+    help
+        Path where ca-certitificats.cert is located
 
 config BR2_PACKAGE_WPEFRAMEWORK_AMAZON_FRAGMENT_CACHE_SIZE
-    help "Fragment cache size in MB)
 	string "Fragment cache size (MB)"
+    help
+        Fragment cache size in MB
 
 endmenu
 endif
