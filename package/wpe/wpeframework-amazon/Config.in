@@ -38,7 +38,7 @@ config BR2_PACKAGE_WPEFRAMEWORK_AMAZON_GROUP
 config BR2_PACKAGE_WPEFRAMEWORK_AMAZON_CA_BUNDLE_PATH
 	string "ca bundle path"
     help
-        Path where ca-certitificats.cert is located
+        Path where ca-certificate.crt is located
 
 config BR2_PACKAGE_WPEFRAMEWORK_AMAZON_FRAGMENT_CACHE_SIZE
 	string "Fragment cache size (MB)"
