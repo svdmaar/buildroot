@@ -4,6 +4,8 @@ WPEDatabaseProcess
 WPEStorageProcess
 WPEFramework
 WPEProcess
+libamazon*
+libgstreamerclient.so
 libEGL.so
 libGLESv2.so
 gst-plugin-scanner
@@ -134,6 +136,7 @@ libWPEFrameworkNetworkControl.so
 libWPEFrameworkJSONRPCPlugin.so
 libWPEFrameworkPlayerInfo.so
 libWPEFrameworkWebServer.so
+libWPEFrameworkAmazonPrime.so
 libwpe-0.2.so
 libWPEBackend-rdk.so
 libWPEBackend-default.so
