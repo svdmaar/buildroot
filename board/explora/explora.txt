@@ -5,6 +5,7 @@ WPEStorageProcess
 WPEFramework
 WPEProcess
 libamazon*
+*com.amazon*
 libgstreamerclient.so
 libEGL.so
 libGLESv2.so
