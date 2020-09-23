@@ -1,0 +1,13 @@
+diff --git a/Source/core/SocketPort.cpp b/Source/core/SocketPort.cpp
+index c44bd091..5c88b2b8 100644
+--- a/Source/core/SocketPort.cpp
++++ b/Source/core/SocketPort.cpp
+@@ -675,7 +675,7 @@ namespace Core {
+         uint32_t waiting = time; // Expect time in MS
+         uint32_t reportSlot = 0;
+ #else
+-        uint32_t waiting = (time == Core::infinite ? 20000 : time);
++        uint32_t waiting = (time == Core::infinite ? 0 : time);
+ #endif
+ 
+         // Right, a wait till connection is closed is requested..
