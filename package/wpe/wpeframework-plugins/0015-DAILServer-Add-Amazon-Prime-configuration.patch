@@ -1,0 +1,58 @@
+From 167b075611cc3ca87f0c191ee0fcd3da98af818a Mon Sep 17 00:00:00 2001
+From: Bram Oosterhuis <mail@bybram.com>
+Date: Mon, 28 Sep 2020 11:35:17 +0200
+Subject: [PATCH] [DAILServer] Add Amazon Prime configuration
+
+---
+ DIALServer/CMakeLists.txt    |  3 +++
+ DIALServer/DIALServer.config | 15 +++++++++++++++
+ 2 files changed, 18 insertions(+)
+
+diff --git a/DIALServer/CMakeLists.txt b/DIALServer/CMakeLists.txt
+index efb62ce..0cdcb0a 100644
+--- a/DIALServer/CMakeLists.txt
++++ b/DIALServer/CMakeLists.txt
+@@ -23,14 +23,17 @@ find_package(CompileSettingsDebug CONFIG REQUIRED)
+ 
+ option(PLUGIN_DIALSERVER_ENABLE_YOUTUBE "Enable YouTube support for DIAL server" OFF)
+ option(PLUGIN_DIALSERVER_ENABLE_NETFLIX "Enable Netflix support for DIAL server" OFF)
++option(PLUGIN_DIALSERVER_ENABLE_AMAZON_PRIME "Enable Amazon Prime support for DIAL server" OFF)
+ 
+ set(PLUGIN_DIALSERVER_YOUTUBE_MODE "passive" CACHE STRING "How the DIAL server should process incomming requests from Youtube (passive/active), leave empty to disable")
+ set(PLUGIN_DIALSERVER_NETFLIX_MODE "passive" CACHE STRING "How the DIAL server should process incomming requests from Netflix (passive/active), leave empty to disable")
++set(PLUGIN_DIALSERVER_AMAZON_PRIME_MODE "passive" CACHE STRING "How the DIAL server should process incomming requests from Amazon Prime (passive/active), leave empty to disable")
+ 
+ set(PLUGIN_DIALSERVER_SWITCHBOARD_CALLSIGN "" CACHE STRING "Callsign of the SwitchBoard plugin if used, leave empty to disable")
+ set(PLUGIN_DIALSERVER_WEBSERVER_CALLSIGN "" CACHE STRING "Callsign of the WebServer plugin if used, leave empty to disable")
+ set(PLUGIN_DIALSERVER_NETFLIX_CALLSIGN "" CACHE STRING "Callsign of the Netflix plugin if used in active mode, leave empty to disable")
+ set(PLUGIN_DIALSERVER_YOUTUBE_CALLSIGN "" CACHE STRING "Callsign of the Youtube plugin if used in active mode, leave empty to disable")
++set(PLUGIN_DIALSERVER_AMAZON_PRIME_CALLSIGN "" CACHE STRING "Callsign of the Youtube plugin if used in active mode, leave empty to disable")
+ 
+ set(PLUGIN_DIALSERVER_NAME "${MODULE_NAME}" CACHE STRING "DIAL server name")
+ set(PLUGIN_DIALSERVER_MODEL "Generic Platform" CACHE STRING "Model of the device")
+diff --git a/DIALServer/DIALServer.config b/DIALServer/DIALServer.config
+index 8323582..0cea265 100644
+--- a/DIALServer/DIALServer.config
++++ b/DIALServer/DIALServer.config
+@@ -74,3 +74,18 @@ if("${PLUGIN_DIALSERVER_ENABLE_NETFLIX}")
+         message(SEND_ERROR "Unknown Netflix mode:<${PLUGIN_DIALSERVER_NETFLIX_MODE}>")
+     endif()
+ endif()
++
++if("${PLUGIN_DIALSERVER_ENABLE_AMAZON_PRIME}")
++    if("${PLUGIN_DIALSERVER_AMAZON_PRIME_MODE}" STREQUAL "active")
++        add_app( ${configuration}
++            NAME AmazonInstantVideo
++            CALLSIGN ${PLUGIN_DIALSERVER_AMAZON_PRIME_CALLSIGN}
++            URL "https://www.primevideo.com")
++    elseif("${PLUGIN_DIALSERVER_AMAZON_PRIME_MODE}" STREQUAL "passive")
++        add_app( ${configuration}
++            NAME AmazonInstantVideo
++            URL "https://www.primevideo.com")
++    else()
++        message(SEND_ERROR "Unknown Amazon Prime mode:<${PLUGIN_DIALSERVER_AMAZON_PRIME_MODE}>")
++    endif()
++endif()
+-- 
+2.25.1
+
