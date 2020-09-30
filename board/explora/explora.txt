@@ -107,7 +107,7 @@ libuuid.so.1
 libintl.so.8
 libiconv.so.2
 ca-certificates.crt
-libWPEFrameworkCryptography.so
+libWPEFrameworkCryptography*.so
 libWPEFrameworkVolumeControl.so
 libWPEFrameworkDeviceInfo.so
 libWPEFrameworkDisplayInfo.so
