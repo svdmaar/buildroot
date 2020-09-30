@@ -1,0 +1,169 @@
+From f5252cc46871f4cb20bfcd5401e572dd09b10eff Mon Sep 17 00:00:00 2001
+From: Bram Oosterhuis <mail@bybram.com>
+Date: Tue, 29 Sep 2020 21:28:16 +0200
+Subject: [PATCH] Squashed commit of the following:
+
+commit aafa642d5430c261b046cb17fd3110a1e6e9d2fc
+Author: Bram Oosterhuis <mail@bybram.com>
+Date:   Tue Sep 29 21:18:36 2020 +0200
+
+    cryptography: Add  option to build a extra software based library
+
+commit 3aacb86d92ba2a435f9e20616744878569e15c86
+Author: Bram Oosterhuis <mail@bybram.com>
+Date:   Tue Sep 29 20:08:51 2020 +0200
+
+    cryptography: Adding missing limits  header
+
+commit b232d656f8388f1c7a3214a0419de36bec971349
+Author: Bram Oosterhuis <mail@bybram.com>
+Date:   Tue Sep 29 20:07:24 2020 +0200
+
+    cryptography: Adding a openssl platform vault
+---
+ Source/cryptography/CMakeLists.txt            | 59 +++++++++++++++++++
+ .../implementation/OpenSSL/Cipher.cpp         |  2 +
+ .../implementation/OpenSSL/Vault.cpp          | 13 ++++
+ .../implementation/OpenSSL/Vault.h            |  1 +
+ 4 files changed, 75 insertions(+)
+
+diff --git a/Source/cryptography/CMakeLists.txt b/Source/cryptography/CMakeLists.txt
+index aff696c1..d3f26782 100644
+--- a/Source/cryptography/CMakeLists.txt
++++ b/Source/cryptography/CMakeLists.txt
+@@ -23,6 +23,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+ string(REPLACE "-Wl,--as-needed" "" CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
+ set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed")
+ 
++option(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY "Include explicitly a software based cryptography library" OFF)
++
+ add_subdirectory(implementation)
+ 
+ add_library(${TARGET} SHARED
+@@ -80,3 +82,60 @@ InstallPackageConfig(
+ InstallCMakeConfig(
+     TARGETS ${TARGET}
+ )
++
++if(INCLUDE_SOFTWARE_CRYPTOGRAPHY_LIBRARY)
++    find_package(OpenSSL REQUIRED)
++
++    add_library(${TARGET}Software SHARED
++        Module.cpp
++        Cryptography.cpp
++        NetflixSecurity.cpp
++        implementation/OpenSSL/Vault.cpp
++        implementation/OpenSSL/Hash.cpp
++        implementation/OpenSSL/Cipher.cpp
++        implementation/OpenSSL/DiffieHellman.cpp
++        implementation/OpenSSL/Derive.cpp
++    )
++
++    target_link_libraries(${TARGET}Software 
++        PRIVATE
++            ${NAMESPACE}Core::${NAMESPACE}Core
++            ${NAMESPACE}Tracing::${NAMESPACE}Tracing
++            OpenSSL::SSL
++            OpenSSL::Crypto
++    )
++
++    target_include_directories(${TARGET}Software 
++        PRIVATE
++            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
++            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/implementation>
++        PUBLIC
++            $<INSTALL_INTERFACE:include/${NAMESPACE}/cryptography>
++    )
++
++    set_target_properties(${TARGET}Software PROPERTIES
++        CXX_STANDARD 11
++        CXX_STANDARD_REQUIRED YES
++        FRAMEWORK FALSE
++        LINK_WHAT_YOU_USE TRUE
++        VERSION ${VERSION}
++        SOVERSION ${VERSION_MAJOR}
++    )
++
++    install(
++        TARGETS ${TARGET}Software EXPORT ${TARGET}SoftwareTargets
++        ARCHIVE DESTINATION lib COMPONENT libs
++        LIBRARY DESTINATION lib COMPONENT libs
++        FRAMEWORK DESTINATION bin COMPONENT libs
++        INCLUDES DESTINATION include/${NAMESPACE}/cryptography
++    )
++
++    InstallPackageConfig(
++        TARGETS ${TARGET}Software
++        DESCRIPTION "A software crypto wrapper library."
++    )
++
++    InstallCMakeConfig(
++        TARGETS ${TARGET}Software 
++    )
++endif(INCLUDE_SOFTWARE_LIB)
+diff --git a/Source/cryptography/implementation/OpenSSL/Cipher.cpp b/Source/cryptography/implementation/OpenSSL/Cipher.cpp
+index cee1d5d5..b0399547 100644
+--- a/Source/cryptography/implementation/OpenSSL/Cipher.cpp
++++ b/Source/cryptography/implementation/OpenSSL/Cipher.cpp
+@@ -28,6 +28,8 @@
+ #include <openssl/sha.h>
+ #include <openssl/evp.h>
+ 
++#include <limits.h>
++
+ #include "Vault.h"
+ 
+ 
+diff --git a/Source/cryptography/implementation/OpenSSL/Vault.cpp b/Source/cryptography/implementation/OpenSSL/Vault.cpp
+index d8c5e76d..296bfd5e 100644
+--- a/Source/cryptography/implementation/OpenSSL/Vault.cpp
++++ b/Source/cryptography/implementation/OpenSSL/Vault.cpp
+@@ -26,6 +26,8 @@
+ #include <openssl/evp.h>
+ #include <openssl/rand.h>
+ 
++#include <limits.h>
++
+ #include "Vault.h"
+ #include "Derive.h"
+ 
+@@ -111,6 +113,14 @@ static constexpr uint8_t MAX_ESN_SIZE = 64;
+     return (instance);
+ }
+ 
++/* static */ Vault& Vault::PlatformInstance()
++{
++    static const uint8_t key[] = { 0x42, 0x71, 0x7b, 0x85, 0x98, 0x61, 0xe3, 0x19, 0x16, 0xd1, 0xc7, 0x28, 0x02, 0x9a, 0xc4, 0x07 };
++
++    static Vault instance(string(reinterpret_cast<const char*>(key), sizeof(key)));
++    return (instance);
++}
++
+ Vault::Vault(const string key, const Callback& ctor, const Callback& dtor)
+     : _lock()
+     , _items()
+@@ -321,6 +331,9 @@ VaultImplementation* vault_instance(const cryptographyvault id)
+         case CRYPTOGRAPHY_VAULT_NETFLIX:
+             vault = &Implementation::Vault::NetflixInstance();
+             break;
++        case CRYPTOGRAPHY_VAULT_PLATFORM:
++            vault = &Implementation::Vault::PlatformInstance();
++            break;
+         default:
+             TRACE_L1(_T("Vault not supported: %d"), static_cast<uint32_t>(id));
+             break;
+diff --git a/Source/cryptography/implementation/OpenSSL/Vault.h b/Source/cryptography/implementation/OpenSSL/Vault.h
+index 4d2d97f2..57c432f8 100644
+--- a/Source/cryptography/implementation/OpenSSL/Vault.h
++++ b/Source/cryptography/implementation/OpenSSL/Vault.h
+@@ -26,6 +26,7 @@ namespace Implementation {
+ class Vault {
+ public:
+     static Vault& NetflixInstance();
++    static Vault& PlatformInstance();
+ 
+ private:
+     using Callback = std::function<void(Vault&)>;
+-- 
+2.25.1
+
