@@ -4,7 +4,7 @@
 #
 ################################################################################
 
-AMAZON_IGNITION_VERSION = dc8b08225d681a92c97c77d2dbf2ee9dad5388a2
+AMAZON_IGNITION_VERSION = fc228c8b51adc8425c8e5fa113d8d1e575ea1f74
 AMAZON_IGNITION_SITE_METHOD = git
 AMAZON_IGNITION_SITE = git@github.com:Metrological/amazon.git
 AMAZON_IGNITION_DEPENDENCIES = jpeg libpng wpeframework amazon amazon-backend
@@ -139,19 +139,13 @@ endef
 define AMAZON_IGNITION_INSTALL_IGNITION_DEV
     @$(call MESSAGE,"Installing ignition headers to: ${STAGING_DIR}/usr/include/ignition") 
     @$(call AMAZON_IGNITION_INSTALL_IGNITION, ${STAGING_DIR})
-    
-    @$(INSTALL) -v -d -m 0755 ${STAGING_DIR}/usr/include/ignition/device-layer/
-    
-    @$(call MESSAGE,"Installing ignition headers  [ ${AMAZON_IGNITION_DEVICE_LAYER_DIR}/../interface ] to: ${STAGING_DIR}/usr/include/ignition") 
-    cd "${AMAZON_IGNITION_DEVICE_LAYER_DIR}/../interface" && find -name "*.h" -type f -exec cp --parents {} ${STAGING_DIR}/usr/include/ignition/device-layer/ \;
-endef   
 
-#cd "$(@D)/ignition/src" && find -name "*.hpp" -type f -exec cp --parents {} ${STAGING_DIR}/usr/include/ignition/ \;
-#cd "$(@D)/ignition/src" && find -name "*.h" -type f -exec cp --parents {} ${STAGING_DIR}/usr/include/ignition/ \;
-#cd "${AMAZON_IGNITION_DEVICE_LAYER_DIR}/../interface" && find -name "*.hpp" -type f -exec cp --parents {} ${STAGING_DIR}/usr/include/ignition/device-layer/ \;
+    @$(INSTALL) -v -d -m 0755 ${STAGING_DIR}/usr/include/ignition
 
-AMAZON_IGNITION_POST_BUILD_HOOKS += AMAZON_IGNITION_INSTALL_GENERIC
-    
+    @$(call MESSAGE,"Installing ignition header  [ ${AMAZON_IGNITION_DEVICE_LAYER_DIR}/../interface/ ] to: ${STAGING_DIR}/usr/include/ignition")
+    cd "${AMAZON_IGNITION_DEVICE_LAYER_DIR}/../interface/include" && find -name "*.h" -type f -exec cp --parents {} ${STAGING_DIR}/usr/include/ignition/ \;
+endef
+
 ifeq ($(BR2_PACKAGE_AMAZON_IGNITION_BUILD_TESTS),y)
     AMAZON_IGNITION_INSTALL_STAGING = NO
     AMAZON_IGNITION_INSTALL_TARGET = NO
@@ -177,22 +171,31 @@ ifeq ($(BR2_PACKAGE_AMAZON_IGNITION_BUILD_TESTS),y)
     endef
 
     define AMAZON_IGNITION_BUILD_CMDS
-        @$(call AMAZON_IGNITION_BUILD_IGNITION_TESTS)
-        @$(call AMAZON_IGNITION_BUILD_INTERACTION_TESTS)
-        @$(call AMAZON_IGNITION_BUILD_DEVICE_LAYER_TESTS) 
         @$(call AMAZON_IGNITION_BUILD_INTERGRATION_TESTS)
     endef    
+
+    define AMAZON_IGNITION_INSTALL_STAGING_CMDS
+    endef
+
+    define AMAZON_IGNITION_INSTALL_TARGET_CMDS
+    endef
+
 else #BR2_PACKAGE_AMAZON_IGNITION_BUILD_TESTS  
     define AMAZON_IGNITION_BUILD_CMDS
       @$(call IGNITION_MAKE all)
     endef
+
+    AMAZON_IGNITION_POST_BUILD_HOOKS += AMAZON_IGNITION_INSTALL_GENERIC
+
+    define AMAZON_IGNITION_INSTALL_STAGING_CMDS
+        @$(call AMAZON_IGNITION_INSTALL_IGNITION_DEV)
+    endef
+
+    define AMAZON_IGNITION_INSTALL_TARGET_CMDS
+        @$(call AMAZON_IGNITION_INSTALL_IGNITION_DEV)
+        @$(call AMAZON_IGNITION_INSTALL_IGNITION, ${TARGET_DIR})
+    endef
+
 endif # BR2_PACKAGE_AMAZON_IGNITION_BUILD_TESTS
 
-define AMAZON_IGNITION_INSTALL_STAGING_CMDS
-    @$(call AMAZON_IGNITION_INSTALL_IGNITION_DEV)
-endef
 
-define AMAZON_IGNITION_INSTALL_TARGET_CMDS
-    @$(call AMAZON_IGNITION_INSTALL_IGNITION_DEV)
-    @$(call AMAZON_IGNITION_INSTALL_IGNITION, ${TARGET_DIR})
-endef
