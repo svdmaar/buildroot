@@ -2,7 +2,7 @@ menuconfig BR2_PACKAGE_WPEFRAMEWORK_AMAZON
 	depends on BR2_PACKAGE_AMAZON
 	bool "Amazon"
 	help
-	   WPE Platform plugins that supports amazon services.
+	   WPE Platform plugins that supports Amazon prime video service.
 
 if BR2_PACKAGE_WPEFRAMEWORK_AMAZON
 # options for the plugin
@@ -44,6 +44,6 @@ config BR2_PACKAGE_WPEFRAMEWORK_AMAZON_FRAGMENT_CACHE_SIZE
 	string "Fragment cache size (MB)"
     help
         Fragment cache size in MB
-
+        
 endmenu
 endif
