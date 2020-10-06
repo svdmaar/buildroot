@@ -33,6 +33,11 @@ case "$1" in
 		cp -rf "${playready_bin}" /usr/bin/bcm-drm-examples/pr
 	fi
 
+	if [ ! -d /rootAmazonPrime ]; then
+        mkdir /root/AmazonPrime
+        chown $IGNITION_USER:$IGNITION_USER /root/AmazonPrime
+    fi
+
 	# Currently the root system is read-only. Since we cannot add anything there we bind 
 	# existing directories with a copy of the actual system. All the stuff we want to 
 	# add is symbolicly linked in from our sources..
